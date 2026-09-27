@@ -1,0 +1,12 @@
+[package]
+name = "einstein-engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "einstein_engine"
+path = "src/lib.rs"
+
+[[test]]
+name = "unit_grid"
+path = "../tests/unit/grid.rs"
