@@ -10,3 +10,7 @@ path = "src/lib.rs"
 [[test]]
 name = "unit_grid"
 path = "../tests/unit/grid.rs"
+
+[[test]]
+name = "unit_field"
+path = "../tests/unit/field.rs"
