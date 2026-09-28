@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
     use einstein_engine::grid::{Field, Grid};
+    use std::sync::Arc;
 
-    fn grid3() -> Grid<3> {
-        Grid::new([2, 3, 4], [1.0, 2.0, 3.0], [0.0, 0.0, 0.0])
+    fn grid3() -> Arc<Grid<3>> {
+        Arc::new(Grid::new([2, 3, 4], [1.0, 2.0, 3.0], [0.0, 0.0, 0.0]))
     }
 
     #[test]
@@ -43,8 +44,15 @@ mod tests {
     }
 
     #[test]
-    fn field_holds_matrix_values() {
-        let mut f: Field<[[f64; 3]; 3], 3> = Field::zeros(grid3());
+    fn fields_share_one_grid() {
+        let grid = grid3();
+        let a: Field<f64, 3> = Field::zeros(grid.clone());
+        let b: Field<f64, 3> = Field::zeros(grid.clone());
+        assert!(Arc::ptr_eq(&a.grid, &b.grid));
+    }
+
+    #[test]
+    fn field_holds_matrix_values() {        let mut f: Field<[[f64; 3]; 3], 3> = Field::zeros(grid3());
         let m = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
         f.set([1, 1, 1], m);
         assert_eq!(*f.get([1, 1, 1]), m);

@@ -1,19 +1,21 @@
 use super::Grid;
+use std::sync::Arc;
+
 
 pub struct Field<T, const D: usize> {
-    pub grid: Grid<D>,
+    pub grid: Arc<Grid<D>>,
     pub data: Vec<T>,
 }
 
 impl<T: Clone, const D: usize> Field<T, D> {
-    /// Field filled with `value` on `grid`.
-    pub fn new(grid: Grid<D>, value: T) -> Self {
+    /// Field filled with `value` on the shared `grid`.
+    pub fn new(grid: Arc<Grid<D>>, value: T) -> Self {
         let data = vec![value; grid.size()];
         Self { grid, data }
     }
 
-    /// Field of zeros on `grid`.
-    pub fn zeros(grid: Grid<D>) -> Self
+    /// Field of zeros on the shared `grid`.
+    pub fn zeros(grid: Arc<Grid<D>>) -> Self
     where
         T: Default,
     {
