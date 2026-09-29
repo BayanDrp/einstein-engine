@@ -1,15 +1,15 @@
 #[derive(Debug, Clone)]
-pub struct Grid<const D: usize> {
-    pub shape: [usize; D],
-    pub spacing: [f64; D],
-    pub origin: [f64; D],
+pub struct Grid<const NDIM: usize> {
+    pub shape: [usize; NDIM],
+    pub spacing: [f64; NDIM],
+    pub origin: [f64; NDIM],
 }
 
-impl<const D: usize> Grid<D> {
+impl<const NDIM: usize> Grid<NDIM> {
     pub fn new(
-        shape: [usize; D],
-        spacing: [f64; D],
-        origin: [f64; D],
+        shape: [usize; NDIM],
+        spacing: [f64; NDIM],
+        origin: [f64; NDIM],
     ) -> Self {
         assert!(shape.iter().all(|&n| n > 0));
         assert!(spacing.iter().all(|&dx| dx > 0.0));
@@ -26,29 +26,29 @@ impl<const D: usize> Grid<D> {
     }
 
     pub fn dim(&self) -> usize {
-        D
+        NDIM
     }
 
     /// True if `idx` is inside the grid bounds.
-    pub fn contains(&self, idx: [usize; D]) -> bool {
+    pub fn contains(&self, idx: [usize; NDIM]) -> bool {
         idx.iter().zip(self.shape.iter()).all(|(&i, &n)| i < n)
     }
 
     /// Row-major flat offset for a multi-index.
-    pub fn index(&self, idx: [usize; D]) -> usize {
+    pub fn index(&self, idx: [usize; NDIM]) -> usize {
         assert!(self.contains(idx));
         let mut flat = 0;
-        for d in 0..D {
+        for d in 0..NDIM {
             flat = flat * self.shape[d] + idx[d];
         }
         flat
     }
 
     /// Physical coordinates of a multi-index.
-    pub fn coords(&self, idx: [usize; D]) -> [f64; D] {
+    pub fn coords(&self, idx: [usize; NDIM]) -> [f64; NDIM] {
         assert!(self.contains(idx));
-        let mut out = [0.0; D];
-        for d in 0..D {
+        let mut out = [0.0; NDIM];
+        for d in 0..NDIM {
             out[d] = self.origin[d] + idx[d] as f64 * self.spacing[d];
         }
         out

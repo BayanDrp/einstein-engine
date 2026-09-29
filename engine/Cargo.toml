@@ -18,3 +18,7 @@ path = "../tests/unit/field.rs"
 [[test]]
 name = "unit_boundary"
 path = "../tests/unit/boundary.rs"
+
+[[test]]
+name = "unit_derivatives"
+path = "../tests/unit/derivatives.rs"

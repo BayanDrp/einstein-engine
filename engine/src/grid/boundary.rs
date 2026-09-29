@@ -8,17 +8,17 @@ pub enum BoundaryKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BoundaryConfig<const D: usize> {
-    pub lower: [BoundaryKind; D],
-    pub upper: [BoundaryKind; D],
+pub struct BoundaryConfig<const NDIM: usize> {
+    pub lower: [BoundaryKind; NDIM],
+    pub upper: [BoundaryKind; NDIM],
 }
 
-impl<const D: usize> BoundaryConfig<D> {
+impl<const NDIM: usize> BoundaryConfig<NDIM> {
     /// All faces periodic.
     pub fn periodic() -> Self {
         Self {
-            lower: [BoundaryKind::Periodic; D],
-            upper: [BoundaryKind::Periodic; D],
+            lower: [BoundaryKind::Periodic; NDIM],
+            upper: [BoundaryKind::Periodic; NDIM],
         }
     }
 }
@@ -30,17 +30,17 @@ impl<const D: usize> BoundaryConfig<D> {
 /// - `Neumann`: the outward normal derivative at the face.
 /// - `Periodic`: ignored.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct BoundaryValues<const D: usize> {
-    pub lower: [f64; D],
-    pub upper: [f64; D],
+pub struct BoundaryValues<const NDIM: usize> {
+    pub lower: [f64; NDIM],
+    pub upper: [f64; NDIM],
 }
 
-impl<const D: usize> BoundaryValues<D> {
+impl<const NDIM: usize> BoundaryValues<NDIM> {
     /// Same value on every face.
     pub fn uniform(value: f64) -> Self {
         Self {
-            lower: [value; D],
-            upper: [value; D],
+            lower: [value; NDIM],
+            upper: [value; NDIM],
         }
     }
 
@@ -51,12 +51,12 @@ impl<const D: usize> BoundaryValues<D> {
 }
 
 /// Calls `f` once per multi-index of a grid with the given shape (row-major).
-fn each_index<const D: usize>(shape: [usize; D], mut f: impl FnMut([usize; D])) {
-    let mut idx = [0usize; D];
+fn each_index<const NDIM: usize>(shape: [usize; NDIM], mut f: impl FnMut([usize; NDIM])) {
+    let mut idx = [0usize; NDIM];
     loop {
         f(idx);
         let mut carry = true;
-        for d in (0..D).rev() {
+        for d in (0..NDIM).rev() {
             if carry {
                 idx[d] += 1;
                 if idx[d] < shape[d] {
@@ -82,15 +82,15 @@ fn each_index<const D: usize>(shape: [usize; D], mut f: impl FnMut([usize; D])) 
 ///   no interior point, so the face is set to `g * dx`.
 /// - `Periodic`: both faces are set to their pointwise average, identifying
 ///   the endpoints.
-pub fn apply<const D: usize>(
-    field: &mut Field<f64, D>,
-    config: &BoundaryConfig<D>,
-    values: &BoundaryValues<D>,
+pub fn apply<const NDIM: usize>(
+    field: &mut Field<f64, NDIM>,
+    config: &BoundaryConfig<NDIM>,
+    values: &BoundaryValues<NDIM>,
 ) {
     let shape = field.grid.shape;
     let spacing = field.grid.spacing;
 
-    for a in 0..D {
+    for a in 0..NDIM {
         let n = shape[a];
         if n == 0 {
             continue;
@@ -156,17 +156,17 @@ pub fn apply<const D: usize>(
     }
 }
 
-impl<const D: usize> BoundaryConfig<D> {
+impl<const NDIM: usize> BoundaryConfig<NDIM> {
     pub fn dirichlet() -> Self {
         Self {
-            lower: [BoundaryKind::Dirichlet; D],
-            upper: [BoundaryKind::Dirichlet; D],
+            lower: [BoundaryKind::Dirichlet; NDIM],
+            upper: [BoundaryKind::Dirichlet; NDIM],
         }
     }
     pub fn neumann() -> Self {
         Self {
-            lower: [BoundaryKind::Neumann; D],
-            upper: [BoundaryKind::Neumann; D],
+            lower: [BoundaryKind::Neumann; NDIM],
+            upper: [BoundaryKind::Neumann; NDIM],
         }
     }
 }

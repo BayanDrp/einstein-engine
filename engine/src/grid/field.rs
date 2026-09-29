@@ -2,32 +2,32 @@ use super::Grid;
 use std::sync::Arc;
 
 
-pub struct Field<T, const D: usize> {
-    pub grid: Arc<Grid<D>>,
+pub struct Field<T, const NDIM: usize> {
+    pub grid: Arc<Grid<NDIM>>,
     pub data: Vec<T>,
 }
 
-impl<T: Clone, const D: usize> Field<T, D> {
+impl<T: Clone, const NDIM: usize> Field<T, NDIM> {
     /// Field filled with `value` on the shared `grid`.
-    pub fn new(grid: Arc<Grid<D>>, value: T) -> Self {
+    pub fn new(grid: Arc<Grid<NDIM>>, value: T) -> Self {
         let data = vec![value; grid.size()];
         Self { grid, data }
     }
 
     /// Field of zeros on the shared `grid`.
-    pub fn zeros(grid: Arc<Grid<D>>) -> Self
+    pub fn zeros(grid: Arc<Grid<NDIM>>) -> Self
     where
         T: Default,
     {
         Self::new(grid, T::default())
     }
 
-    pub fn get(&self, idx: [usize; D]) -> &T {
+    pub fn get(&self, idx: [usize; NDIM]) -> &T {
         let flat = self.grid.index(idx);
         &self.data[flat]
     }
 
-    pub fn set(&mut self, idx: [usize; D], value: T) {
+    pub fn set(&mut self, idx: [usize; NDIM], value: T) {
         let flat = self.grid.index(idx);
         self.data[flat] = value;
     }
