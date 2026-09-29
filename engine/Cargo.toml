@@ -22,3 +22,11 @@ path = "../tests/unit/boundary.rs"
 [[test]]
 name = "unit_derivatives"
 path = "../tests/unit/derivatives.rs"
+
+[[test]]
+name = "unit_christoffel"
+path = "../tests/unit/christoffel.rs"
+
+[[test]]
+name = "unit_metric"
+path = "../tests/unit/metric.rs"
