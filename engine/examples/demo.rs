@@ -38,14 +38,14 @@ fn main() {
     println!("  lowered shift beta_i = {:?}", lower);
     println!("  beta^2               = {}", shift_squared(&point.spatial, &point.shift));
     println!("  4-metric g_ab:");
-    for row in point.spacetime().as_4x4() {
+    for row in point.spacetime().as_matrix::<4>() {
         println!("    {:9.4} {:9.4} {:9.4} {:9.4}", row[0], row[1], row[2], row[3]);
     }
 
     // --- christoffel.rs: symbols over the whole grid ---------------------
     let config = BoundaryConfig::<3>::periodic();
     let values = BoundaryValues::<3>::zeros();
-    let gamma_field = christoffel_symbols(&lapse, &shift, &spatial, &config, &values);
+    let gamma_field = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
 
     let c = *gamma_field.get(idx);
     println!("Christoffel symbols at {:?}:", grid.coords(idx));

@@ -30,3 +30,7 @@ path = "../tests/geometry/christoffel.rs"
 [[test]]
 name = "unit_slice"
 path = "../tests/geometry/metric.rs"
+
+[[test]]
+name = "unit_riemann"
+path = "../tests/geometry/riemann.rs"

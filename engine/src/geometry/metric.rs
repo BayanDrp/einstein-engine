@@ -90,10 +90,12 @@ impl<const D: usize> SpacetimeMetric<D> {
         }
     }
 
-    /// the symmetric 4-metric as a 4x4 array; index 0 is time,
-    /// indices 1..=D are spatial
-    pub fn as_4x4(&self) -> [[f64; 4]; 4] {
-        let mut g = [[0.0f64; 4]; 4];
+    /// the symmetric spacetime metric as an array; index 0 is time,
+    /// indices 1..=D are spatial. N is the spacetime dimension,
+    /// so pass N = D + 1 (3 for 2+1, 4 for 3+1).
+    pub fn as_matrix<const N: usize>(&self) -> [[f64; N]; N] {
+        assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+        let mut g = [[0.0f64; N]; N];
         g[0][0] = self.tt;
         for i in 1..=D {
             g[0][i] = self.ti[i - 1];

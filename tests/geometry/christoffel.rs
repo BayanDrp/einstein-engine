@@ -20,7 +20,7 @@ mod tests {
         let config = BoundaryConfig::<3>::periodic();
         let values = BoundaryValues::<3>::zeros();
 
-        let g = christoffel_symbols(&lapse, &shift, &spatial, &config, &values);
+        let g = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
         for i in 0..5 {
             for j in 0..5 {
                 for k in 0..5 {
@@ -59,7 +59,7 @@ mod tests {
         config.upper = [BoundaryKind::Dirichlet; 3];
         let values = BoundaryValues::<3>::zeros();
 
-        let g = christoffel_symbols(&lapse, &shift, &spatial, &config, &values);
+        let g = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
 
         // check the middle point, x = 1.0, alpha = 2.0
         let c = *g.get([2, 1, 1]);
@@ -71,9 +71,8 @@ mod tests {
     // boosted slice: alpha = 1 + x, beta = (0.5, 0, 0), gamma = delta.
     // the boost makes g_tt = -alpha^2 + v^2 and g_tx = v, so the symbols
     // change too. with central differences in x (alpha linear, v constant):
-    //   Gamma^t_tx = alpha' / alpha
-    //   Gamma^x_tt = alpha * alpha' (1 - v^2 / alpha^2)
-    //   Gamma^x_tx = 0
+    //   Gamma^a_bc = 1/2 g^ad (d_b g_dc + d_c g_bd - d_d g_bc),
+    // with d_x g_tt the only nonzero derivative.
     #[test]
     fn christoffel_boosted_lapse() {
         let grid = Arc::new(Grid::new([5, 3, 3], [0.5, 0.5, 0.5], [0.0, 0.0, 0.0]));
@@ -98,7 +97,7 @@ mod tests {
         let config = BoundaryConfig::<3>::periodic();
         let values = BoundaryValues::<3>::zeros();
 
-        let g = christoffel_symbols(&lapse, &shift, &spatial, &config, &values);
+        let g = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
 
         // check the middle point, x = 1.0, alpha = 2.0, v = 0.5
         let c = *g.get([2, 1, 1]);
@@ -118,6 +117,44 @@ mod tests {
         assert!(close(c.data[0][1][0], 0.5 * gtt * dg_tt)); // symmetric in the lower indices
         assert!(close(c.data[0][0][0], 0.5 * gtx * (-dg_tt))); // Gamma^t_tt, needs g^tx != 0
         assert!(close(c.data[1][1][0], 0.5 * gtx * dg_tt)); // Gamma^x_xt
+        assert!(close(c.data[1][0][0], 0.5 * gxx * (-dg_tt))); // Gamma^x_tt
+        assert!(close(c.data[1][0][1], 0.5 * gtx * dg_tt)); // Gamma^x_tx
+    }
+
+    // same boosted lapse, but in 2+1 (two spatial dimensions) to prove
+    // the Christoffel symbols are sized by N = D + 1, not by a fixed 4.
+    #[test]
+    fn christoffel_boosted_lapse_2plus1() {
+        let grid = Arc::new(Grid::new([5, 3], [0.5, 0.5], [0.0, 0.0]));
+        let mut lapse: Field<f64, 2> = Field::zeros(grid.clone());
+        for i in 0..5 {
+            let x = i as f64 * 0.5;
+            for j in 0..3 {
+                lapse.set([i, j], 1.0 + x);
+            }
+        }
+        let shift: Field<Vector<2>, 2> = Field::new(grid.clone(), Vector::new([0.5, 0.0]));
+        let spatial: Field<Tensor2<2>, 2> = Field::new(
+            grid.clone(),
+            Tensor2::new([[1.0, 0.0], [0.0, 1.0]]),
+        );
+        let config = BoundaryConfig::<2>::periodic();
+        let values = BoundaryValues::<2>::zeros();
+
+        let g = christoffel_symbols::<2, 3>(&lapse, &shift, &spatial, &config, &values);
+        let c = *g.get([2, 1]);
+        let alpha = 2.0;
+        let dalpha = 1.0;
+        let v = 0.5;
+        let det = -alpha * alpha;
+        let gtt = 1.0 / det;
+        let gtx = -v / det;
+        let gxx = (-alpha * alpha + v * v) / det;
+        let dg_tt = -2.0 * alpha * dalpha;
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
+
+        assert!(close(c.data[0][0][1], 0.5 * gtt * dg_tt)); // Gamma^t_tx
+        assert!(close(c.data[0][0][0], 0.5 * gtx * (-dg_tt))); // Gamma^t_tt
         assert!(close(c.data[1][0][0], 0.5 * gxx * (-dg_tt))); // Gamma^x_tt
         assert!(close(c.data[1][0][1], 0.5 * gtx * dg_tt)); // Gamma^x_tx
     }

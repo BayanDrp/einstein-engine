@@ -4,20 +4,27 @@ use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::grid::Field;
 use crate::numerics::derivatives::central_partial;
 
-/// Christoffel symbols of the 4-metric. data[a][b][c] = Gamma^a_bc,
-/// with a, b, c spacetime indices (0 for time, 1..=D spatial).
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct Christoffel {
-    pub data: [[[f64; 4]; 4]; 4],
+/// Christoffel symbols of the spacetime metric. data[a][b][c] = Gamma^a_bc.
+/// N is the number of spacetime dimensions, always D + 1 spatial:
+/// 3 for a 2+1 run, 4 for a 3+1 run.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Christoffel<const N: usize> {
+    pub data: [[[f64; N]; N]; N],
 }
 
-pub type ChristoffelField<const D: usize> = Field<Christoffel, D>;
+pub type ChristoffelField<const N: usize, const D: usize> = Field<Christoffel<N>, D>;
 
-impl Christoffel {
+impl<const N: usize> Default for Christoffel<N> {
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
+impl<const N: usize> Christoffel<N> {
     /// all symbols zero
     pub fn zero() -> Self {
         Self {
-            data: [[[0.0; 4]; 4]; 4],
+            data: [[[0.0; N]; N]; N],
         }
     }
 }
@@ -44,16 +51,20 @@ fn spatial_component<const D: usize>(
     out
 }
 
-/// Christoffel symbols of the 3+1 metric on the whole grid.
+/// Christoffel symbols of the spacetime metric on the whole grid.
 /// Gamma = 1/2 g^(ad) (dg_bcd + dg_cbd - dg_dbc), using central
 /// differences off the lapse, shift and spatial metric fields.
-pub fn christoffel_symbols<const D: usize>(
+/// D is the number of spatial dimensions, N = D + 1 is the number
+/// of spacetime dimensions; call as christoffel_symbols::<D, N>.
+pub fn christoffel_symbols<const D: usize, const N: usize>(
     lapse: &LapseField<D>,
     shift: &ShiftField<D>,
     spatial: &SliceMetric<D>,
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
-) -> ChristoffelField<D> {
+) -> ChristoffelField<N, D> {
+    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+
     // first derivatives d/dx^k of each metric variable
     let dalpha: Vec<Field<f64, D>> = (0..D)
         .map(|k| central_partial(lapse, k, boundary, boundary_values))
@@ -80,10 +91,10 @@ pub fn christoffel_symbols<const D: usize>(
         }
     }
 
-    let mut result: ChristoffelField<D> = Field::zeros(lapse.grid.clone());
-    let mut dg = [[0.0f64; 4]; 4];
-    let mut dg_list = vec![[[0.0f64; 4]; 4]; 4];
-    let mut d_beta_lower = [0.0f64; 4];
+    let mut result: ChristoffelField<N, D> = Field::zeros(lapse.grid.clone());
+    let mut dg = [[0.0f64; N]; N];
+    let mut dg_list = vec![[[0.0f64; N]; N]; N];
+    let mut d_beta_lower = [0.0f64; N];
     let mut symbols = Christoffel::zero();
 
     lapse.grid.for_each_index(|idx| {
@@ -91,11 +102,11 @@ pub fn christoffel_symbols<const D: usize>(
         let beta = shift.get(idx);
         let gamma = spatial.get(idx);
 
-        // the 3+1 four-metric g_ab, assembled by the metric module
-        let g = SpacetimeMetric::from_3plus1(alpha, beta, gamma).as_4x4();
+        // the spacetime metric g_ab, assembled by the metric module
+        let g = SpacetimeMetric::from_3plus1(alpha, beta, gamma).as_matrix::<N>();
 
         // derivatives of g_ab; index 0 is time and stays zero
-        dg_list[0] = [[0.0f64; 4]; 4];
+        dg_list[0] = [[0.0f64; N]; N];
         for k in 0..D {
             let d_alpha = *dalpha[k].get(idx);
             // d/dx^k of the lower shift: gamma_mj d beta^j + d gamma_mj beta^j
