@@ -127,17 +127,11 @@ einstein-engine/
 │       ├── geometry/                          # partly implemented
 │       │   ├── mod.rs
 │       │   ├── tensor.rs                      # Vector, Tensor2
+│       │   ├── metric.rs                      # 3+1 split + Metric + 4-metric
 │       │   ├── christoffel.rs                 # Gamma^a_bc from 3+1 fields
 │       │   ├── curvature.rs                   # stub
 │       │   ├── ricci.rs                       # stub
 │       │   └── riemann.rs                     # stub
-│       │
-│       ├── spacetime/                         # split 3+1 variables
-│       │   ├── mod.rs
-│       │   ├── lapse.rs                       # LapseField = Field<f64>
-│       │   ├── shift.rs                       # ShiftField = Field<Vector>
-│       │   ├── extrinsic.rs                   # ExtrinsicCurvature
-│       │   └── slice.rs                       # SliceMetric + 4-metric rebuild
 │       │
 │       ├── numerics/
 │       │   ├── mod.rs
@@ -168,13 +162,10 @@ einstein-engine/
 │           └── schwarzschild.rs
 │
 ├── tests/
-│   └── unit/                                  # one target per suite
-│       ├── grid.rs                            # 10 tests
-│       ├── field.rs                           # 7 tests
-│       ├── boundary.rs                        # 8 tests
-│       ├── derivatives.rs                     # 5 tests
-│       ├── christoffel.rs                     # 2 tests
-│       └── slice.rs                           # 4 tests
+│   ├── grid/                                  # grid, field, boundary
+│   ├── numerics/                              # derivatives
+│   ├── geometry/                              # christoffel, metric
+│   └── physics/                               # planned
 │
 ├── examples/                                  # empty skeletons
 │   ├── flat_spacetime.rs
@@ -338,9 +329,9 @@ The numerical foundation and the 3+1 geometric representation are taking shape:
 
 * `Grid`, `Field`, and boundary conditions are implemented and tested.
 * Spatial derivative operators work on arbitrary grid dimensions.
-* The 3+1 variables are split into dedicated modules (`lapse`, `shift`, `extrinsic`, `slice`).
+* The 3+1 variables (lapse, shift, extrinsic curvature, slice metric) live together in `geometry/metric.rs`, with the `Metric` pointwise struct and the 4-metric rebuild.
 * Christoffel symbols are computed from the metric fields and match analytic solutions.
-* 36 unit tests pass (`cargo test` from inside `engine/`).
+* 39 unit tests pass (`cargo test` from inside `engine/`).
 
 Next up is curvature (`riemann.rs`, `ricci.rs`) and then the Einstein constraints/evolution.
 

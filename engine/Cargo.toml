@@ -29,4 +29,4 @@ path = "../tests/geometry/christoffel.rs"
 
 [[test]]
 name = "unit_slice"
-path = "../tests/spacetime/slice.rs"
+path = "../tests/geometry/metric.rs"
