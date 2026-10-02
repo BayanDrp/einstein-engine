@@ -89,4 +89,21 @@ impl<const D: usize> SpacetimeMetric<D> {
             spatial: *spatial,
         }
     }
+
+    /// the symmetric 4-metric as a 4x4 array; index 0 is time,
+    /// indices 1..=D are spatial
+    pub fn as_4x4(&self) -> [[f64; 4]; 4] {
+        let mut g = [[0.0f64; 4]; 4];
+        g[0][0] = self.tt;
+        for i in 1..=D {
+            g[0][i] = self.ti[i - 1];
+            g[i][0] = self.ti[i - 1];
+        }
+        for i in 1..=D {
+            for j in 1..=D {
+                g[i][j] = self.spatial[(i - 1, j - 1)];
+            }
+        }
+        g
+    }
 }

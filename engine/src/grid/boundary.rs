@@ -50,28 +50,6 @@ impl<const NDIM: usize> BoundaryValues<NDIM> {
     }
 }
 
-/// Calls `f` once per multi-index of a grid with the given shape (row-major).
-fn each_index<const NDIM: usize>(shape: [usize; NDIM], mut f: impl FnMut([usize; NDIM])) {
-    let mut idx = [0usize; NDIM];
-    loop {
-        f(idx);
-        let mut carry = true;
-        for d in (0..NDIM).rev() {
-            if carry {
-                idx[d] += 1;
-                if idx[d] < shape[d] {
-                    carry = false;
-                } else {
-                    idx[d] = 0;
-                }
-            }
-        }
-        if carry {
-            break;
-        }
-    }
-}
-
 /// Enforces `config` on a scalar `field` in place.
 ///
 /// Semantics per face:
@@ -89,6 +67,7 @@ pub fn apply<const NDIM: usize>(
 ) {
     let shape = field.grid.shape;
     let spacing = field.grid.spacing;
+    let grid = field.grid.clone();
 
     for a in 0..NDIM {
         let n = shape[a];
@@ -105,7 +84,7 @@ pub fn apply<const NDIM: usize>(
             match kinds[a] {
                 BoundaryKind::Dirichlet => {
                     let v = vals[a];
-                    each_index(shape, |idx| {
+                    grid.for_each_index(|idx| {
                         if idx[a] == face {
                             field.set(idx, v);
                         }
@@ -114,7 +93,7 @@ pub fn apply<const NDIM: usize>(
                 BoundaryKind::Neumann => {
                     let dx = spacing[a];
                     let g = vals[a];
-                    each_index(shape, |idx| {
+                    grid.for_each_index(|idx| {
                         if idx[a] == face {
                             let f_inner = if n >= 2 {
                                 let mut inner = idx;
@@ -130,7 +109,7 @@ pub fn apply<const NDIM: usize>(
                 BoundaryKind::Periodic => {
                     let mut lo = Vec::new();
                     let mut hi = Vec::new();
-                    each_index(shape, |idx| {
+                    grid.for_each_index(|idx| {
                         if idx[a] == 0 {
                             lo.push(*field.get(idx));
                         }
@@ -140,7 +119,7 @@ pub fn apply<const NDIM: usize>(
                     });
                     let mut li = 0;
                     let mut hi_i = 0;
-                    each_index(shape, |idx| {
+                    grid.for_each_index(|idx| {
                         if idx[a] == 0 {
                             field.set(idx, 0.5 * (lo[li] + hi[li]));
                             li += 1;

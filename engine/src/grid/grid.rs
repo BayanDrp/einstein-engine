@@ -53,4 +53,27 @@ impl<const NDIM: usize> Grid<NDIM> {
         }
         out
     }
+
+    /// walk every grid point once, row-major
+    pub fn for_each_index(&self, mut f: impl FnMut([usize; NDIM])) {
+        let shape = self.shape;
+        let mut idx = [0usize; NDIM];
+        loop {
+            f(idx);
+            let mut carry = true;
+            for d in (0..NDIM).rev() {
+                if carry {
+                    idx[d] += 1;
+                    if idx[d] < shape[d] {
+                        carry = false;
+                    } else {
+                        idx[d] = 0;
+                    }
+                }
+            }
+            if carry {
+                break;
+            }
+        }
+    }
 }

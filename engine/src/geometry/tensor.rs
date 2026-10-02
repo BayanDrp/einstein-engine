@@ -59,3 +59,35 @@ impl<const D: usize> IndexMut<(usize, usize)> for Tensor2<D> {
         &mut self.data[i][j]
     }
 }
+
+/// invert an NxN matrix by Gauss-Jordan, panics if singular
+pub fn invert<const N: usize>(m: &[[f64; N]; N]) -> [[f64; N]; N] {
+    let mut a = *m;
+    let mut inv = [[0.0f64; N]; N];
+    for i in 0..N {
+        inv[i][i] = 1.0;
+    }
+    for col in 0..N {
+        let pivot = (col..N)
+            .max_by(|&x, &y| a[x][col].abs().partial_cmp(&a[y][col].abs()).unwrap())
+            .unwrap();
+        a.swap(col, pivot);
+        inv.swap(col, pivot);
+        let d = a[col][col];
+        assert!(d.abs() > 1e-15, "singular matrix");
+        for j in 0..N {
+            a[col][j] /= d;
+            inv[col][j] /= d;
+        }
+        for row in 0..N {
+            if row != col && a[row][col] != 0.0 {
+                let factor = a[row][col];
+                for j in 0..N {
+                    a[row][j] -= factor * a[col][j];
+                    inv[row][j] -= factor * inv[col][j];
+                }
+            }
+        }
+    }
+    inv
+}
