@@ -9,24 +9,24 @@ path = "src/lib.rs"
 
 [[test]]
 name = "unit_grid"
-path = "../tests/unit/grid.rs"
+path = "../tests/grid/grid.rs"
 
 [[test]]
 name = "unit_field"
-path = "../tests/unit/field.rs"
+path = "../tests/grid/field.rs"
 
 [[test]]
 name = "unit_boundary"
-path = "../tests/unit/boundary.rs"
+path = "../tests/grid/boundary.rs"
 
 [[test]]
 name = "unit_derivatives"
-path = "../tests/unit/derivatives.rs"
+path = "../tests/numerics/derivatives.rs"
 
 [[test]]
 name = "unit_christoffel"
-path = "../tests/unit/christoffel.rs"
+path = "../tests/geometry/christoffel.rs"
 
 [[test]]
-name = "unit_metric"
-path = "../tests/unit/metric.rs"
+name = "unit_slice"
+path = "../tests/spacetime/slice.rs"

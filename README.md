@@ -106,98 +106,85 @@ Updated Spacetime
 
 Matter and geodesic solvers will be integrated into this pipeline as the engine matures.
 
-## Planned Architecture
+## Architecture
+
+Files marked **stub** are skeleton placeholders, empty and not yet wired in.
 
 ```text
 einstein-engine/
 │
+├── Cargo.toml                # workspace root
 ├── engine/
-│   ├── src/
-│   │   ├── grid/
-│   │   │   ├── grid.rs
-│   │   │   ├── field.rs
-│   │   │   └── boundary.rs
-│   │   │
-│   │   ├── geometry/
-│   │   │   ├── metric.rs
-│   │   │   ├── christoffel.rs
-│   │   │   ├── riemann.rs
-│   │   │   ├── ricci.rs
-│   │   │   └── curvature.rs
-│   │   │
-│   │   ├── relativity/
-│   │   │   ├── einstein.rs
-│   │   │   ├── constraints.rs
-│   │   │   ├── evolution.rs
-│   │   │   └── matter.rs
-│   │   │
-│   │   ├── spacetime/
-│   │   │   ├── lapse.rs
-│   │   │   ├── shift.rs
-│   │   │   ├── extrinsic.rs
-│   │   │   └── slice.rs
-│   │   │
-│   │   ├── physics/
-│   │   │   ├── body.rs
-│   │   │   ├── particles.rs
-│   │   │   └── stress_energy.rs
-│   │   │
-│   │   ├── numerics/
-│   │   │   ├── derivatives.rs
-│   │   │   ├── interpolation.rs
-│   │   │   ├── rk4.rs
-│   │   │   └── solver.rs
-│   │   │
-│   │   ├── initial_data/
-│   │   │   ├── minkowski.rs
-│   │   │   ├── schwarzschild.rs
-│   │   │   └── custom.rs
-│   │   │
-│   │   ├── validation/
-│   │   │   ├── constraints.rs
-│   │   │   ├── conservation.rs
-│   │   │   └── schwarzschild.rs
-│   │   │
-│   │   └── lib.rs
-│   │
-│   └── Cargo.toml
-│
-├── visualization/
-│   ├── python/
-│   │   ├── io.py
-│   │   ├── analysis.py
-│   │   └── plots.py
-│   │
-│   └── manim/
-│       ├── spacetime.py
-│       ├── trajectories.py
-│       └── curvature.py
-│
-├── simulations/
-│   ├── minkowski/
-│   ├── schwarzschild/
-│   ├── binary/
-│   └── multi_body/
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs
+│       ├── grid/                              # implemented + tested
+│       │   ├── mod.rs
+│       │   ├── grid.rs                        # const-generic Grid
+│       │   ├── field.rs                       # Field<Arc<Grid>, values>
+│       │   └── boundary.rs                    # BoundaryKind/Config + apply
+│       │
+│       ├── geometry/                          # partly implemented
+│       │   ├── mod.rs
+│       │   ├── tensor.rs                      # Vector, Tensor2
+│       │   ├── christoffel.rs                 # Gamma^a_bc from 3+1 fields
+│       │   ├── curvature.rs                   # stub
+│       │   ├── ricci.rs                       # stub
+│       │   └── riemann.rs                     # stub
+│       │
+│       ├── spacetime/                         # split 3+1 variables
+│       │   ├── mod.rs
+│       │   ├── lapse.rs                       # LapseField = Field<f64>
+│       │   ├── shift.rs                       # ShiftField = Field<Vector>
+│       │   ├── extrinsic.rs                   # ExtrinsicCurvature
+│       │   └── slice.rs                       # SliceMetric + 4-metric rebuild
+│       │
+│       ├── numerics/
+│       │   ├── mod.rs
+│       │   ├── derivatives.rs                 # forward/central + edges
+│       │   ├── interpolation.rs               # stub
+│       │   ├── rk4.rs                         # stub
+│       │   └── solver.rs                      # stub
+│       │
+│       ├── relativity/                        # stubs
+│       │   ├── einstein.rs
+│       │   ├── constraints.rs
+│       │   ├── evolution.rs
+│       │   └── matter.rs
+│       │
+│       ├── initial_data/                      # stubs
+│       │   ├── minkowski.rs
+│       │   ├── schwarzschild.rs
+│       │   └── custom.rs
+│       │
+│       ├── physics/                           # stubs
+│       │   ├── body.rs
+│       │   ├── particles.rs
+│       │   └── stress_energy.rs
+│       │
+│       └── validation/                        # stubs
+│           ├── constraints.rs
+│           ├── conservation.rs
+│           └── schwarzschild.rs
 │
 ├── tests/
-│   ├── unit/
-│   ├── geometry/
-│   ├── numerics/
-│   └── physics/
+│   └── unit/                                  # one target per suite
+│       ├── grid.rs                            # 10 tests
+│       ├── field.rs                           # 7 tests
+│       ├── boundary.rs                        # 8 tests
+│       ├── derivatives.rs                     # 5 tests
+│       ├── christoffel.rs                     # 2 tests
+│       └── slice.rs                           # 4 tests
 │
-├── examples/
+├── examples/                                  # empty skeletons
 │   ├── flat_spacetime.rs
 │   ├── schwarzschild.rs
 │   └── binary_system.rs
 │
-├── data/
-│   ├── input/
-│   └── output/
-│
-├── docs/
-│   ├── mathematics/
-│   ├── architecture/
-│   └── validation/
+├── visualization/                             # planned
+├── simulations/                               # planned
+├── data/                                      # planned
+├── docs/                                      # planned
 │
 └── README.md
 ```
@@ -206,29 +193,29 @@ einstein-engine/
 
 ### Phase 1 — Numerical Foundation
 
-* 3D grid
-* Field storage
-* Indexing and memory layout
-* Boundary handling
-* Spatial derivatives
-* Interpolation
-* Time integration
+* [x] 3D grid
+* [x] Field storage
+* [x] Indexing and memory layout
+* [x] Boundary handling
+* [x] Spatial derivatives (forward + central, edge-aware)
+* [ ] Interpolation
+* [ ] Time integration
 
 ### Phase 2 — 3+1 Geometry
 
-* Spatial metric \(\gamma_{ij}\)
-* Extrinsic curvature \(K_{ij}\)
-* Lapse \(\alpha\)
-* Shift \(\beta^i\)
-* Reconstruction of the 4D metric \(g_{\mu\nu}\)
+* [x] Spatial metric \(\gamma_{ij}\) (`SliceMetric`)
+* [x] Extrinsic curvature \(K_{ij}\) (`ExtrinsicCurvature`)
+* [x] Lapse \(\alpha\) (`LapseField`)
+* [x] Shift \(\beta^i\) (`ShiftField`)
+* [x] Reconstruction of the 4D metric \(g_{\mu\nu}\) (`SpacetimeMetric`)
 
 ### Phase 3 — Curvature
 
-* Christoffel symbols
-* Riemann tensor
-* Ricci tensor
-* Ricci scalar
-* Einstein tensor
+* [x] Christoffel symbols (validated against Minkowski + static lapse)
+* [ ] Riemann tensor
+* [ ] Ricci tensor
+* [ ] Ricci scalar
+* [ ] Einstein tensor
 
 ### Phase 4 — Numerical Relativity
 
@@ -347,9 +334,17 @@ Performance optimizations will be introduced only after the numerical implementa
 
 **Early development**
 
-The project architecture and mathematical foundations are being designed before implementing the full Einstein evolution system.
+The numerical foundation and the 3+1 geometric representation are taking shape:
 
-The current priority is to build the numerical foundation and validate the 3+1 geometric representation step by step.
+* `Grid`, `Field`, and boundary conditions are implemented and tested.
+* Spatial derivative operators work on arbitrary grid dimensions.
+* The 3+1 variables are split into dedicated modules (`lapse`, `shift`, `extrinsic`, `slice`).
+* Christoffel symbols are computed from the metric fields and match analytic solutions.
+* 36 unit tests pass (`cargo test` from inside `engine/`).
+
+Next up is curvature (`riemann.rs`, `ricci.rs`) and then the Einstein constraints/evolution.
+
+Remote compute support, visualization, and large simulations remain future work.
 
 ## License
 
