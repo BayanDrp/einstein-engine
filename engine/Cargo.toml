@@ -38,3 +38,7 @@ path = "../tests/geometry/riemann.rs"
 [[test]]
 name = "unit_ricci"
 path = "../tests/geometry/ricci.rs"
+
+[[test]]
+name = "unit_curvature"
+path = "../tests/geometry/curvature.rs"
