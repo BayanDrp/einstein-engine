@@ -34,3 +34,7 @@ path = "../tests/geometry/metric.rs"
 [[test]]
 name = "unit_riemann"
 path = "../tests/geometry/riemann.rs"
+
+[[test]]
+name = "unit_ricci"
+path = "../tests/geometry/ricci.rs"
