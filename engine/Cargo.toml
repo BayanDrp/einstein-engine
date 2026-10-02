@@ -42,3 +42,11 @@ path = "../tests/geometry/ricci.rs"
 [[test]]
 name = "unit_curvature"
 path = "../tests/geometry/curvature.rs"
+
+[[test]]
+name = "unit_stress_energy"
+path = "../tests/physics/stress_energy.rs"
+
+[[test]]
+name = "unit_einstein"
+path = "../tests/relativity/einstein.rs"
