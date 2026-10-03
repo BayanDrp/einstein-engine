@@ -124,14 +124,15 @@ einstein-engine/
 │       │   ├── field.rs                       # Field<Arc<Grid>, values>
 │       │   └── boundary.rs                    # BoundaryKind/Config + apply
 │       │
-│       ├── geometry/                          # partly implemented
+│       ├── geometry/                          # implemented + tested
 │       │   ├── mod.rs
-│       │   ├── tensor.rs                      # Vector, Tensor2
+│       │   ├── tensor.rs                      # Vector, Tensor2, matrix invert
 │       │   ├── metric.rs                      # 3+1 split + Metric + 4-metric
-│       │   ├── christoffel.rs                 # Gamma^a_bc from 3+1 fields
-│       │   ├── curvature.rs                   # stub
-│       │   ├── ricci.rs                       # stub
-│       │   └── riemann.rs                     # stub
+│       │   ├── christoffel.rs                 # Gamma^a_bc from 3+1 fields (+ spatial)
+│       │   ├── riemann.rs                     # R^mu_nu rho sigma from Christoffel
+│       │   ├── ricci.rs                       # R_mu_nu by contracting Riemann
+│       │   ├── curvature.rs                   # Ricci scalar R; spatial R^(3)
+│       │   ├── covariant_derivative.rs        # D_k V^i, D_k W_i, div_j T^i_j
 │       │
 │       ├── numerics/
 │       │   ├── mod.rs
@@ -140,21 +141,21 @@ einstein-engine/
 │       │   ├── rk4.rs                         # stub
 │       │   └── solver.rs                      # stub
 │       │
-│       ├── relativity/                        # stubs
-│       │   ├── einstein.rs
-│       │   ├── constraints.rs
-│       │   ├── evolution.rs
-│       │   └── matter.rs
+│       ├── relativity/                        # einstein + constraints implemented
+│       │   ├── einstein.rs                    # G_mu_nu from Ricci and metric
+│       │   ├── constraints.rs                 # Hamiltonian + momentum constraints
+│       │   ├── evolution.rs                   # stub
+│       │   └── matter.rs                      # stub
 │       │
 │       ├── initial_data/                      # stubs
 │       │   ├── minkowski.rs
 │       │   ├── schwarzschild.rs
 │       │   └── custom.rs
 │       │
-│       ├── physics/                           # stubs
-│       │   ├── body.rs
-│       │   ├── particles.rs
-│       │   └── stress_energy.rs
+│       ├── physics/                           # stress-energy implemented
+│       │   ├── body.rs                        # stub
+│       │   ├── particles.rs                   # stub
+│       │   └── stress_energy.rs               # T_mu_nu from a density field
 │       │
 │       └── validation/                        # stubs
 │           ├── constraints.rs
@@ -164,8 +165,10 @@ einstein-engine/
 ├── tests/
 │   ├── grid/                                  # grid, field, boundary
 │   ├── numerics/                              # derivatives
-│   ├── geometry/                              # christoffel, metric
-│   └── physics/                               # planned
+│   ├── geometry/                              # christoffel, riemann, ricci,
+│   │                                           #  scalar, spatial R^(3), cov. deriv
+│   ├── physics/                               # stress_energy
+│   └── relativity/                            # einstein, constraints
 │
 ├── examples/                                  # empty skeletons
 │   ├── flat_spacetime.rs
@@ -203,15 +206,17 @@ einstein-engine/
 ### Phase 3 — Curvature
 
 * [x] Christoffel symbols (validated against Minkowski + static lapse)
-* [ ] Riemann tensor
-* [ ] Ricci tensor
-* [ ] Ricci scalar
-* [ ] Einstein tensor
+* [x] Riemann tensor (spacetime and pure spatial slice)
+* [x] Ricci tensor
+* [x] Ricci scalar
+* [x] Spatial slice curvature R^(3)
+* [x] Covariant derivative (vector, covector, mixed divergence)
+* [x] Einstein tensor
 
 ### Phase 4 — Numerical Relativity
 
-* Einstein constraints
-* Evolution equations
+* [x] Einstein constraints
+* [ ] Evolution equations
 * BSSN-based evolution
 * Gauge conditions
 * Constraint monitoring
@@ -302,7 +307,7 @@ $$
 K_{ij}=0
 $$
 
-which must produce zero spacetime curvature.
+which must produce zero spacetime curvature. This identity case is exercised by the flat-space tests in every module that touches curvature or the constraints.
 
 ## Performance
 
@@ -325,15 +330,18 @@ Performance optimizations will be introduced only after the numerical implementa
 
 **Early development**
 
-The numerical foundation and the 3+1 geometric representation are taking shape:
+The numerical foundation, the 3+1 geometry, and the full curvature → Einstein → constraint chain are in place:
 
 * `Grid`, `Field`, and boundary conditions are implemented and tested.
 * Spatial derivative operators work on arbitrary grid dimensions.
 * The 3+1 variables (lapse, shift, extrinsic curvature, slice metric) live together in `geometry/metric.rs`, with the `Metric` pointwise struct and the 4-metric rebuild.
-* Christoffel symbols are computed from the metric fields and match analytic solutions.
-* 39 unit tests pass (`cargo test` from inside `engine/`).
+* The full curvature chain (Christoffel → Riemann → Ricci → scalar) works for the spacetime metric, and the same machinery computes the spatial slice curvature R^(3).
+* Covariant derivatives (vector, covector, mixed divergence) live in `geometry/covariant_derivative.rs` — the momentum constraint already reuses the mixed divergence.
+* `physics/stress_energy.rs` provides the matter side (dust), and `relativity/einstein.rs` the left side, so `G_mu_nu = 8 pi T_mu_nu` can be assembled.
+* Both Einstein constraints are implemented and tested: the Hamiltonian constraint (`H = R^(3) + K^2 - K_ij K^ij - 16 pi rho`) and the momentum constraint (`M^i = div_j(K^i_j - delta^i_j K) - 8 pi S^i`).
+* 61 unit tests pass (`cargo test` from inside `engine/`).
 
-Next up is curvature (`riemann.rs`, `ricci.rs`) and then the Einstein constraints/evolution.
+Next up are the Einstein evolution equations and time integration (ADM or BSSN), followed by gauge conditions.
 
 Remote compute support, visualization, and large simulations remain future work.
 
