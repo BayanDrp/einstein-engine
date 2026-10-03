@@ -153,3 +153,59 @@ pub fn christoffel_symbols<const D: usize, const N: usize>(
 
     result
 }
+
+/// Christoffel symbols of the spatial slice metric gamma_ij alone.
+/// Gamma^i_jk = 1/2 gamma^(il) (dg_ljk + dg_lkj - dg_jkl), using
+/// central differences of the spatial metric. Here every index of
+/// the result is a spatial one, so N = D (no time dimension at all).
+pub fn spatial_christoffel_symbols<const D: usize>(
+    spatial: &SliceMetric<D>,
+    boundary: &BoundaryConfig<D>,
+    boundary_values: &BoundaryValues<D>,
+) -> ChristoffelField<D, D> {
+    // first derivatives d/dx^k of each spatial metric component
+    let mut dgamma: Vec<Vec<Vec<Field<f64, D>>>> = Vec::with_capacity(D);
+    for i in 0..D {
+        dgamma.push(Vec::with_capacity(D));
+        for j in 0..D {
+            let gamma_ij = spatial_component(spatial, i, j);
+            dgamma[i].push(
+                (0..D)
+                    .map(|k| central_partial(&gamma_ij, k, boundary, boundary_values))
+                    .collect(),
+            );
+        }
+    }
+
+    let mut result: ChristoffelField<D, D> = Field::zeros(spatial.grid.clone());
+    spatial.grid.for_each_index(|idx| {
+        let gamma = spatial.get(idx);
+        let mut gmat = [[0.0f64; D]; D];
+        for i in 0..D {
+            for j in 0..D {
+                gmat[i][j] = gamma[(i, j)];
+            }
+        }
+        let ginv = invert(&gmat);
+
+        let mut symbols = Christoffel::zero();
+        // Gamma^i_jk = 1/2 gamma^(il) (dg_ljk + dg_lkj - dg_jkl)
+        for i in 0..D {
+            for j in 0..D {
+                for k in 0..D {
+                    let mut s = 0.0;
+                    for l in 0..D {
+                        s += ginv[i][l]
+                            * (*dgamma[l][j][k].get(idx)
+                                + *dgamma[l][k][j].get(idx)
+                                - *dgamma[j][k][l].get(idx));
+                    }
+                    symbols.data[i][j][k] = 0.5 * s;
+                }
+            }
+        }
+        result.set(idx, symbols);
+    });
+
+    result
+}

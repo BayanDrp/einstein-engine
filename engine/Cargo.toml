@@ -44,6 +44,10 @@ name = "unit_curvature"
 path = "../tests/geometry/curvature.rs"
 
 [[test]]
+name = "unit_spatial_curvature"
+path = "../tests/geometry/spatial_curvature.rs"
+
+[[test]]
 name = "unit_stress_energy"
 path = "../tests/physics/stress_energy.rs"
 

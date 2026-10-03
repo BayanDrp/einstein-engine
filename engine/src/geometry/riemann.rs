@@ -43,19 +43,33 @@ fn gamma_component<const D: usize, const N: usize>(
     out
 }
 
+/// which grid direction the derivative of a Christoffel index goes along.
+/// in the spacetime case (N = D + 1) index 0 is time: static metric, so
+/// no field direction. for a pure spatial slice (N = D) every index is
+/// a grid direction with the same number.
+fn field_dir<const D: usize, const N: usize>(index: usize) -> Option<usize> {
+    if N == D + 1 {
+        (index > 0).then(|| index - 1)
+    } else {
+        Some(index)
+    }
+}
+
 /// Riemann tensor on the whole grid, built from its Christoffel symbols:
 ///
 ///   R^mu_nu rho sigma = d_rho Gamma^mu_nu sigma - d_sigma Gamma^mu_nu rho
 ///                     + Gamma^mu_lambda rho Gamma^lambda_nu sigma
 ///                     - Gamma^mu_lambda sigma Gamma^lambda_nu rho
 ///
-/// index 0 is time; the metric is assumed static, so the time
-/// derivative of any Christoffel symbol is zero.
+/// works in two ways: with N = D + 1 for the spacetime metric (index 0
+/// is time, and the metric is assumed static so time derivatives are
+/// zero), or with N = D for a pure spatial slice metric.
 pub fn riemann_from_christoffel<const D: usize, const N: usize>(
     gamma: &ChristoffelField<N, D>,
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> RiemannField<N, D> {
+    assert!(N == D || N == D + 1, "N must be D or D + 1, got N = {N}, D = {D}");
     // d_gamma[mu][nu][rho][k] = d/dx^k of Gamma^mu_nu rho, k over spatial dims
     let mut d_gamma = Vec::new();
     for mu in 0..N {
@@ -85,11 +99,11 @@ pub fn riemann_from_christoffel<const D: usize, const N: usize>(
                     for sigma in 0..N {
                         // d_rho Gamma^mu_nu sigma - d_sigma Gamma^mu_nu rho
                         let mut s = 0.0;
-                        if rho > 0 {
-                            s += *d_gamma[mu][nu][sigma][rho - 1].get(idx);
+                        if let Some(dir) = field_dir::<D, N>(rho) {
+                            s += *d_gamma[mu][nu][sigma][dir].get(idx);
                         }
-                        if sigma > 0 {
-                            s -= *d_gamma[mu][nu][rho][sigma - 1].get(idx);
+                        if let Some(dir) = field_dir::<D, N>(sigma) {
+                            s -= *d_gamma[mu][nu][rho][dir].get(idx);
                         }
                         // Gamma^mu_lambda rho Gamma^lambda_nu sigma
                         // - Gamma^mu_lambda sigma Gamma^lambda_nu rho
