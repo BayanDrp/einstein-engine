@@ -52,6 +52,10 @@ name = "unit_covariant_derivative"
 path = "../tests/geometry/covariant_derivative.rs"
 
 [[test]]
+name = "unit_evolution"
+path = "../tests/relativity/evolution.rs"
+
+[[test]]
 name = "unit_stress_energy"
 path = "../tests/physics/stress_energy.rs"
 

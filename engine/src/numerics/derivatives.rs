@@ -1,3 +1,4 @@
+use crate::geometry::tensor::Vector;
 use crate::grid::boundary::{BoundaryConfig, BoundaryKind, BoundaryValues};
 use crate::grid::Field;
 
@@ -163,6 +164,36 @@ pub fn central_partial<const NDIM: usize>(
             break;
         }
     }
+
+    result
+}
+
+// directional derivative along the shift: d_beta f = beta^k d_k f
+// this is the advection term that appears in the ADM evolution
+// equations. the shift is passed as a plain field so numerics does
+// not have to depend on geometry::metric.
+pub fn shift_derivative<const NDIM: usize>(
+    field: &Field<f64, NDIM>,
+    shift: &Field<Vector<NDIM>, NDIM>,
+    boundary: &BoundaryConfig<NDIM>,
+    boundary_values: &BoundaryValues<NDIM>,
+) -> Field<f64, NDIM> {
+    // d_k f for every direction, one scalar field per direction
+    let mut d_f: Vec<Field<f64, NDIM>> = Vec::with_capacity(NDIM);
+    for k in 0..NDIM {
+        d_f.push(central_partial(field, k, boundary, boundary_values));
+    }
+
+    let mut result = Field::zeros(field.grid.clone());
+
+    field.grid.for_each_index(|idx| {
+        let beta = shift.get(idx);
+        let mut derivative = 0.0;
+        for k in 0..NDIM {
+            derivative += beta[k] * *d_f[k].get(idx);
+        }
+        result.set(idx, derivative);
+    });
 
     result
 }

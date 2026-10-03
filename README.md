@@ -141,10 +141,10 @@ einstein-engine/
 │       │   ├── rk4.rs                         # stub
 │       │   └── solver.rs                      # stub
 │       │
-│       ├── relativity/                        # einstein + constraints implemented
+│       ├── relativity/                        # einstein, constraints, evolution
 │       │   ├── einstein.rs                    # G_mu_nu from Ricci and metric
 │       │   ├── constraints.rs                 # Hamiltonian + momentum constraints
-│       │   ├── evolution.rs                   # stub
+│       │   ├── evolution.rs                   # d_t gamma_ij and d_t K_ij (ADM)
 │       │   └── matter.rs                      # stub
 │       │
 │       ├── initial_data/                      # stubs
@@ -168,7 +168,7 @@ einstein-engine/
 │   ├── geometry/                              # christoffel, riemann, ricci,
 │   │                                           #  scalar, spatial R^(3), cov. deriv
 │   ├── physics/                               # stress_energy
-│   └── relativity/                            # einstein, constraints
+│   └── relativity/                            # einstein, constraints, evolution
 │
 ├── examples/                                  # empty skeletons
 │   ├── flat_spacetime.rs
@@ -193,7 +193,7 @@ einstein-engine/
 * [x] Boundary handling
 * [x] Spatial derivatives (forward + central, edge-aware)
 * [ ] Interpolation
-* [ ] Time integration
+* [ ] Time integration (RK4)
 
 ### Phase 2 — 3+1 Geometry
 
@@ -216,8 +216,8 @@ einstein-engine/
 ### Phase 4 — Numerical Relativity
 
 * [x] Einstein constraints
-* [ ] Evolution equations
-* BSSN-based evolution
+* [x] Evolution equations
+* [ ] BSSN-based evolution
 * Gauge conditions
 * Constraint monitoring
 * Stable numerical evolution
@@ -339,9 +339,12 @@ The numerical foundation, the 3+1 geometry, and the full curvature → Einstein 
 * Covariant derivatives (vector, covector, mixed divergence) live in `geometry/covariant_derivative.rs` — the momentum constraint already reuses the mixed divergence.
 * `physics/stress_energy.rs` provides the matter side (dust), and `relativity/einstein.rs` the left side, so `G_mu_nu = 8 pi T_mu_nu` can be assembled.
 * Both Einstein constraints are implemented and tested: the Hamiltonian constraint (`H = R^(3) + K^2 - K_ij K^ij - 16 pi rho`) and the momentum constraint (`M^i = div_j(K^i_j - delta^i_j K) - 8 pi S^i`).
-* 61 unit tests pass (`cargo test` from inside `engine/`).
+* The ADM evolution right-hand sides are implemented: `d_t gamma_ij = -2 alpha K_ij + L_beta gamma_ij` and `d_t K_ij = -alpha nabla_i nabla_j alpha + alpha (R_ij - 2 K_ik K^k_j + K K_ij) + L_beta K_ij`, both in partial-derivative form where possible and with the upper triangle mirrored so symmetry is structural.
+* `numerics::derivatives::shift_derivative` supplies the `beta^k d_k` advection term that the Lie derivatives need.
+* `engine/examples/evolution.rs` runs the equations on a plane gravitational wave and checks that flat spacetime stays fixed.
+* 71 unit tests pass (`cargo test` from inside `engine/`).
 
-Next up are the Einstein evolution equations and time integration (ADM or BSSN), followed by gauge conditions.
+Next up is time integration (`numerics/rk4`), then BSSN and gauge conditions. Plain ADM is weakly hyperbolic, so it is useful for wave tests but not for stable long runs.
 
 Remote compute support, visualization, and large simulations remain future work.
 
