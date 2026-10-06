@@ -48,6 +48,10 @@ name = "unit_spatial_curvature"
 path = "../tests/geometry/spatial_curvature.rs"
 
 [[test]]
+name = "unit_rk4"
+path = "../tests/numerics/rk4.rs"
+
+[[test]]
 name = "unit_covariant_derivative"
 path = "../tests/geometry/covariant_derivative.rs"
 

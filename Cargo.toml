@@ -1,3 +1,9 @@
 [workspace]
 members = ["engine"]
 resolver = "2"
+
+# The curvature chain costs roughly 50x more unoptimized and the evolution
+# tests are dominated by it. This affects test builds only; cargo build and
+# cargo run keep the dev profile.
+[profile.test]
+opt-level = 2

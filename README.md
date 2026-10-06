@@ -138,7 +138,7 @@ einstein-engine/
 │       │   ├── mod.rs
 │       │   ├── derivatives.rs                 # forward/central + edges
 │       │   ├── interpolation.rs               # stub
-│       │   ├── rk4.rs                         # stub
+│       │   ├── rk4.rs                         # EvolutionState + RK4 step
 │       │   └── solver.rs                      # stub
 │       │
 │       ├── relativity/                        # einstein, constraints, evolution
@@ -164,7 +164,7 @@ einstein-engine/
 │
 ├── tests/
 │   ├── grid/                                  # grid, field, boundary
-│   ├── numerics/                              # derivatives
+│   ├── numerics/                              # derivatives, rk4
 │   ├── geometry/                              # christoffel, riemann, ricci,
 │   │                                           #  scalar, spatial R^(3), cov. deriv
 │   ├── physics/                               # stress_energy
@@ -193,7 +193,7 @@ einstein-engine/
 * [x] Boundary handling
 * [x] Spatial derivatives (forward + central, edge-aware)
 * [ ] Interpolation
-* [ ] Time integration (RK4)
+* [x] Time integration (RK4)
 
 ### Phase 2 — 3+1 Geometry
 
@@ -341,10 +341,27 @@ The numerical foundation, the 3+1 geometry, and the full curvature → Einstein 
 * Both Einstein constraints are implemented and tested: the Hamiltonian constraint (`H = R^(3) + K^2 - K_ij K^ij - 16 pi rho`) and the momentum constraint (`M^i = div_j(K^i_j - delta^i_j K) - 8 pi S^i`).
 * The ADM evolution right-hand sides are implemented: `d_t gamma_ij = -2 alpha K_ij + L_beta gamma_ij` and `d_t K_ij = -alpha nabla_i nabla_j alpha + alpha (R_ij - 2 K_ik K^k_j + K K_ij) + L_beta K_ij`, both in partial-derivative form where possible and with the upper triangle mirrored so symmetry is structural.
 * `numerics::derivatives::shift_derivative` supplies the `beta^k d_k` advection term that the Lie derivatives need.
-* `engine/examples/evolution.rs` runs the equations on a plane gravitational wave and checks that flat spacetime stays fixed.
-* 71 unit tests pass (`cargo test` from inside `engine/`).
+* `engine/examples/evolution.rs` checks that flat spacetime stays fixed, then transports a plane wave with RK4 and reports the speed it actually travels at.
+* `numerics::rk4` adds `EvolutionState` (the four ADM variables) and a Runge-Kutta 4 step, with the gauge frozen at geodesic slicing so lapse and shift never move.
+* 78 unit tests pass (`cargo test` from inside `engine/`).
 
-Next up is time integration (`numerics/rk4`), then BSSN and gauge conditions. Plain ADM is weakly hyperbolic, so it is useful for wave tests but not for stable long runs.
+Two of the RK4 tests are the ones worth trusting. A plane wave built to
+travel at light speed is measured travelling at 0.9977, against the 0.9984
+ceiling that second-order centred differences impose at that `k * h`, so the
+shortfall is discretisation rather than a bug in the equations. And the
+temporal error ratio measures 9038 where fourth order predicts 10000,
+confirming the integrator rather than just confirming that it runs.
+
+Getting the wave to travel *forwards* needed the right sign for `K_ij`. The
+ADM metric equation gives `K_ij = -1/2 d_t h_ij` at first order, so the
+opposite sign quietly builds a left-moving wave. The amplitude matters just
+as much: `A * k` has to stay well below 1, or the `K_ij K^ij` term in the `K`
+equation stops being a correction and the slice no longer solves the
+constraints.
+
+Next up is gauge evolution and constraint monitoring, then BSSN. Plain ADM is
+weakly hyperbolic and geodesic slicing drifts the Hamiltonian constraint, so
+it is useful for wave tests but not for stable long runs.
 
 Remote compute support, visualization, and large simulations remain future work.
 

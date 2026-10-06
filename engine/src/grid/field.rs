@@ -2,6 +2,7 @@ use super::Grid;
 use std::sync::Arc;
 
 
+#[derive(Debug, Clone)]
 pub struct Field<T, const NDIM: usize> {
     pub grid: Arc<Grid<NDIM>>,
     pub data: Vec<T>,
