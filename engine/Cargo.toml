@@ -70,3 +70,11 @@ path = "../tests/relativity/einstein.rs"
 [[test]]
 name = "unit_constraints"
 path = "../tests/relativity/constraints.rs"
+
+[[test]]
+name = "unit_validation_constraints"
+path = "../tests/validation/constraints.rs"
+
+[[test]]
+name = "unit_gauge"
+path = "../tests/relativity/gauge.rs"

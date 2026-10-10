@@ -70,8 +70,8 @@ fn main() {
     let config = BoundaryConfig::<D>::periodic();
     let values = BoundaryValues::<D>::zeros();
 
-    // geodesic slicing: no lapse variation, no shift. this is the
-    // simplest gauge and keeps the two equations readable.
+    // constant lapse, no shift: geodesic-slicing *data*, which keeps the
+    // two ADM right-hand sides below readable.
     let lapse = Field::new(grid.clone(), 1.0);
     let shift: ShiftField<D> = Field::new(grid.clone(), Vector::<D>::zero());
 
@@ -165,7 +165,15 @@ fn main() {
     println!("  the rest is higher-order terms in the coupled system. Refine the");
     println!("  grid or shrink k h and the measured speed rises toward 1.");
 
-    println!("\nlapse and shift are frozen at 1 and 0 (geodesic slicing), which is why");
-    println!("they are carried in EvolutionState but never change. A full gauge");
-    println!("evolution would give them real right-hand sides instead.");
+    let lapse_drift = state
+        .lapse
+        .data
+        .iter()
+        .fold(0.0f64, |acc, v| acc.max((v - 1.0).abs()));
+
+    println!("\ngauge: 1+log for the lapse, d_t alpha = -2 alpha K (beta = 0 here)");
+    println!("  max |alpha - 1| over the run: {lapse_drift:.3e}");
+    println!("  the wave is transversely traceless, so its K trace only survives");
+    println!("  through gamma^ij and the lapse barely moves. The shift still has");
+    println!("  no equation and stays at zero.");
 }

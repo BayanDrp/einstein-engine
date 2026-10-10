@@ -145,6 +145,7 @@ einstein-engine/
 │       │   ├── einstein.rs                    # G_mu_nu from Ricci and metric
 │       │   ├── constraints.rs                 # Hamiltonian + momentum constraints
 │       │   ├── evolution.rs                   # d_t gamma_ij and d_t K_ij (ADM)
+│       │   ├── gauge.rs                        # 1+log lapse, frozen shift
 │       │   └── matter.rs                      # stub
 │       │
 │       ├── initial_data/                      # stubs
@@ -157,10 +158,11 @@ einstein-engine/
 │       │   ├── particles.rs                   # stub
 │       │   └── stress_energy.rs               # T_mu_nu from a density field
 │       │
-│       └── validation/                        # stubs
-│           ├── constraints.rs
-│           ├── conservation.rs
-│           └── schwarzschild.rs
+│       └── validation/
+│           ├── mod.rs
+│           ├── constraints.rs                 # max |H| and |M| on a slice
+│           ├── conservation.rs                # stub
+│           └── schwarzschild.rs               # stub
 │
 ├── tests/
 │   ├── grid/                                  # grid, field, boundary
@@ -168,7 +170,8 @@ einstein-engine/
 │   ├── geometry/                              # christoffel, riemann, ricci,
 │   │                                           #  scalar, spatial R^(3), cov. deriv
 │   ├── physics/                               # stress_energy
-│   └── relativity/                            # einstein, constraints, evolution
+│   ├── relativity/                            # einstein, constraints, evolution, gauge
+│   └── validation/                            # constraint monitor
 │
 ├── examples/                                  # empty skeletons
 │   ├── flat_spacetime.rs
@@ -218,8 +221,8 @@ einstein-engine/
 * [x] Einstein constraints
 * [x] Evolution equations
 * [ ] BSSN-based evolution
-* Gauge conditions
-* Constraint monitoring
+* [x] Gauge conditions (1+log lapse, frozen shift)
+* [x] Constraint monitoring
 * Stable numerical evolution
 
 ### Phase 5 — Matter
@@ -342,8 +345,10 @@ The numerical foundation, the 3+1 geometry, and the full curvature → Einstein 
 * The ADM evolution right-hand sides are implemented: `d_t gamma_ij = -2 alpha K_ij + L_beta gamma_ij` and `d_t K_ij = -alpha nabla_i nabla_j alpha + alpha (R_ij - 2 K_ik K^k_j + K K_ij) + L_beta K_ij`, both in partial-derivative form where possible and with the upper triangle mirrored so symmetry is structural.
 * `numerics::derivatives::shift_derivative` supplies the `beta^k d_k` advection term that the Lie derivatives need.
 * `engine/examples/evolution.rs` checks that flat spacetime stays fixed, then transports a plane wave with RK4 and reports the speed it actually travels at.
-* `numerics::rk4` adds `EvolutionState` (the four ADM variables) and a Runge-Kutta 4 step, with the gauge frozen at geodesic slicing so lapse and shift never move.
-* 78 unit tests pass (`cargo test` from inside `engine/`).
+* `numerics::rk4` adds `EvolutionState` (the four ADM variables) and a Runge-Kutta 4 step; the state also carries `lapse_rhs` and `shift_rhs`, which `rhs` composes into the gauge part of `d(state)/dt`.
+* `relativity::gauge` gives those variables a time derivative: 1+log slicing for the lapse, `d_t alpha = beta^i d_i alpha - 2 alpha K` with `K = gamma^ij K_ij`, and a shift that stays frozen because a Gamma-driver would need `d_t Gamma^i`, i.e. third derivatives of the metric.
+* `validation::constraints::residuals` reduces both Einstein constraints on a slice to two numbers, so drift can be measured instead of assumed.
+* 87 unit tests pass (`cargo test` from inside `engine/`).
 
 Two of the RK4 tests are the ones worth trusting. A plane wave built to
 travel at light speed is measured travelling at 0.9977, against the 0.9984
@@ -359,9 +364,32 @@ as much: `A * k` has to stay well below 1, or the `K_ij K^ij` term in the `K`
 equation stops being a correction and the slice no longer solves the
 constraints.
 
-Next up is gauge evolution and constraint monitoring, then BSSN. Plain ADM is
-weakly hyperbolic and geodesic slicing drifts the Hamiltonian constraint, so
-it is useful for wave tests but not for stable long runs.
+Constraint monitoring is now in place, and it found something. The plane wave
+used to validate RK4 is **not an exact vacuum solution**: `|H|max = 1.235e-3`
+and `|M|max = 6.155e-4`. Hand-estimated from `H = 3R + K^2 - K_ij K^ij` with
+`3R = 0` and traceless `K`, the Hamiltonian residual should be `3.16e-4`, so
+the nonlinear `3R` terms contribute roughly three times that much and do not
+cancel the `K_ij K^ij` term the way the linearised argument assumes. The
+wave-speed test still passes because the violation is `O((A k)^2)` and the
+linear dynamics dominate over eight steps, but the data is off-shell and
+getting it right means solving the constraints for the initial slice rather
+than imposing TT data directly.
+
+Constraint drift is real but slow, and it is now measured rather than
+asserted: over 8 RK4 steps `|H|max` oscillates between `1.218e-3` and
+`1.243e-3` and grows by 0.6%, with the envelope rising monotonically. That is
+too small to assert on this horizon, so the test bounds growth at 2x and
+catches instability instead. A longer run is what would make the drift claim
+itself testable. The gauge running underneath is 1+log, but the wave is
+transversely traceless so its `K` trace only survives through
+`gamma^ij != delta^ij`: the lapse moves by `2.0e-7` over the run and the
+slice is indistinguishable from geodesic at this horizon. Tracing `K` with
+`delta^ij` instead would give exactly zero, so a test pins that the
+inverse metric is really used.
+
+Next up is constraint-solving initial data, then BSSN.
+Plain ADM is weakly hyperbolic, so it is useful for wave tests but not for
+stable long runs.
 
 Remote compute support, visualization, and large simulations remain future work.
 

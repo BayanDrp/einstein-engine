@@ -152,11 +152,12 @@ fn flat_slice_is_a_fixed_point_over_many_steps() {
     assert_eq!(evolved.k.data, state.k.data, "K drifted");
 }
 
-// rhs() reports zero for the gauge fields, so axpy cannot move them. A
-// non-flat state is used deliberately: gamma and K derivatives are nonzero,
-// so a passing test shows the freeze is selective rather than global.
+// 1+log gives ∂t α = -2αK. The wave is traceless with respect to δ^{ij}, so
+// the trace only shows up through γ^{ij} ≠ δ^{ij} and is second order in the
+// amplitude: the lapse responds to K, but only barely. The shift has no
+// equation yet and stays bit for bit.
 #[test]
-fn frozen_gauge_leaves_lapse_and_shift_untouched() {
+fn gauge_evolves_the_lapse_and_freezes_the_shift() {
     let grid = wave_grid();
     let (config, values) = periodic();
     let state = wave_state(grid.clone());
@@ -166,10 +167,27 @@ fn frozen_gauge_leaves_lapse_and_shift_untouched() {
         rhs.gamma.data.iter().any(|t| t[(1, 1)].abs() > 1.0e-9),
         "gamma derivative should be nonzero"
     );
+    assert!(
+        rhs.lapse.data.iter().any(|v| v.abs() > 1.0e-6),
+        "1+log should see the trace of K"
+    );
+    assert!(
+        rhs.shift.data.iter().all(|v| v == &Vector::<D>::zero()),
+        "shift has no equation yet"
+    );
 
     let stepped = state.step_rk4(0.004, &config, &values);
-    assert_eq!(stepped.lapse.data, state.lapse.data, "lapse moved");
     assert_eq!(stepped.shift.data, state.shift.data, "shift moved");
+
+    let moved = stepped
+        .lapse
+        .data
+        .iter()
+        .zip(&state.lapse.data)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f64, f64::max);
+    assert!(moved > 1.0e-9, "lapse should move, moved {moved}");
+    assert!(moved < 1.0e-6, "traceless wave should barely move the lapse: {moved}");
 }
 
 #[test]

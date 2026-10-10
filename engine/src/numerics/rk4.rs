@@ -13,6 +13,7 @@ use crate::relativity::evolution::{
     extrinsic_curvature_rhs,
     spatial_metric_rhs,
 };
+use crate::relativity::gauge;
 
 #[derive(Debug, Clone)]
 pub struct EvolutionState<const D: usize> {
@@ -54,8 +55,9 @@ impl<const D: usize> EvolutionState<D> {
 
     /// Compute d(state)/dt.
     ///
-    /// Current gauge is frozen:
-    /// ∂t α = 0
+    /// Gauge: 1+log slicing for the lapse, frozen shift.
+    ///
+    /// ∂t α = β^i ∂i α - 2 α K
     /// ∂t β^i = 0
     pub fn rhs(
         &self,
@@ -84,17 +86,37 @@ impl<const D: usize> EvolutionState<D> {
             grid: self.grid.clone(),
             gamma: gamma_rhs,
             k: k_rhs,
-
-            // Frozen gauge.
-            lapse: Field::new(
-                self.grid.clone(),
-                0.0,
-            ),
-            shift: Field::new(
-                self.grid.clone(),
-                Vector::<D>::zero(),
-            ),
+            lapse: self.lapse_rhs(boundary, boundary_values),
+            shift: self.shift_rhs(),
         }
+    }
+
+    /// 1+log slicing for the lapse:
+    ///
+    /// ∂t α = β^i ∂i α - 2 α K
+    ///
+    /// with K = γ^ij K_ij. Returns the time derivative of the lapse field.
+    pub fn lapse_rhs(
+        &self,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> LapseField<D> {
+        gauge::lapse_rhs(
+            &self.lapse,
+            &self.shift,
+            &self.gamma,
+            &self.k,
+            boundary,
+            boundary_values,
+        )
+    }
+
+    /// Time derivative of the shift.
+    ///
+    /// There is no shift equation yet: a Γ-driver needs ∂t Γ^i, i.e. third
+    /// derivatives of the metric, so β^i stays put and this is always zero.
+    pub fn shift_rhs(&self) -> ShiftField<D> {
+        gauge::shift_rhs(&self.shift)
     }
 
     /// self + a * rhs
