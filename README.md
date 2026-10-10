@@ -142,7 +142,7 @@ einstein-engine/
 │       │   └── solver.rs                      # stub
 │       │
 │       ├── relativity/                        # einstein, constraints, evolution
-│       │   ├── bssn.rs                        # BSSN state + ADM conversions
+ │       │   ├── bssn.rs                        # BSSN state, conversions, RHS + RK4
 │       │   ├── einstein.rs                    # G_mu_nu from Ricci and metric
 │       │   ├── constraints.rs                 # Hamiltonian + momentum constraints
 │       │   ├── evolution.rs                   # d_t gamma_ij and d_t K_ij (ADM)
@@ -223,7 +223,7 @@ einstein-engine/
 
 * [x] Einstein constraints
 * [x] Evolution equations
-* [ ] BSSN-based evolution
+* [x] BSSN-based evolution (RHS + RK4; long-run bound still to un-ignore)
 * [x] Gauge conditions (1+log lapse, frozen shift)
 * [x] Constraint monitoring
 * Stable numerical evolution
@@ -353,8 +353,8 @@ The numerical foundation, the 3+1 geometry, and the full curvature → Einstein 
 * `relativity::gauge` gives those variables a time derivative: 1+log slicing for the lapse, `d_t alpha = beta^i d_i alpha - 2 alpha K` with `K = gamma^ij K_ij`, and a shift that stays frozen because a Gamma-driver would need `d_t Gamma^i`, i.e. third derivatives of the metric.
 * `validation::constraints::residuals` reduces both Einstein constraints on a slice to two numbers, so drift can be measured instead of assumed.
 * `engine/src/initial_data/schwarzschild.rs` builds the isotropic Schwarzschild slice (numbers below) and refuses input that reaches the puncture; `hamiltonian_residual_converges_second_order` and `slice_is_a_discrete_fixed_point` pin the on-shell and fixed-point properties.
-* `relativity::bssn` introduces the BSSN conformal variables (`phi`, `gtilde_ij`, `K`, `A tilde_ij`, `Gamma^i`) and exact conversions to and from the ADM `EvolutionState`: `phi = ln(det gamma)/12`, `gtilde_ij = det^{-1/3} gamma_ij`, `K = gamma^{ij} K_ij`, `A tilde_ij = K_ij - (1/3) gamma_ij K`, `Gamma^i = gtilde^{jk} Gamma^i_jk(gtilde)`. The round trip is the identity, and the algebraic constraints `det(gtilde) = 1` and `gtilde^ij A tilde_ij = 0` hold to machine precision.
-* 103 unit tests pass (`cargo test` from inside `engine/`), with one more ignored (`static_slice_stays_bounded_over_a_long_run`) because plain ADM cannot yet hold a long curved run -- it is the receipt for the BSSN phase.
+* `relativity::bssn` introduces the BSSN conformal variables (`phi`, `gtilde_ij`, `K`, `A tilde_ij`, `Gamma^i`) and exact conversions to and from the ADM `EvolutionState`: `phi = ln(det gamma)/12`, `gtilde_ij = det^{-1/3} gamma_ij`, `K = gamma^{ij} K_ij`, `A tilde_ij = e^{-4 phi} (K_ij - (1/3) gamma_ij K)`, `Gamma^i = gtilde^{jk} Gamma^i_jk(gtilde)`. The round trip is the identity, and the algebraic constraints `det(gtilde) = 1` and `gtilde^ij A tilde_ij = 0` hold to machine precision. `BssnState::rhs` implements the vacuum standard BSSN equations (Rosswog & Diener 2404.15952, eqs 66-70) with 1+log lapse and frozen shift; `Rtilde_ij` is the direct conformal Ricci plus the `gtilde_k(i d_j) (Gamma^k - Gamma(n)^k)` hyperbolic correction, `Rphi_ij` carries the conformal factor, and the `d_t K` equation matches ADM up to `-alpha * H`. Schwarzschild BSSN data evolved 17 RK4 steps stays bounded (`max|K| ~ 0.06`, `max|A| ~ 0.05`) where direct-`Rtilde` blows up to `1e31`.
+* 107 unit tests pass (`cargo test` from inside `engine/`), with one more ignored (`static_slice_stays_bounded_over_a_long_run`) because plain ADM cannot yet hold a long curved run -- it is the receipt for the BSSN phase.
 
 Two of the RK4 tests are the ones worth trusting. A plane wave built to
 travel at light speed is measured travelling at 0.9977, against the 0.9984
