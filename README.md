@@ -116,6 +116,7 @@ einstein-engine/
 ├── Cargo.toml                # workspace root
 ├── engine/
 │   ├── Cargo.toml
+│   ├── examples/                        # demo + plane-wave evolution demo
 │   └── src/
 │       ├── lib.rs
 │       ├── grid/                              # implemented + tested
@@ -141,7 +142,7 @@ einstein-engine/
 │       │   ├── rk4.rs                         # AdmState + RK4 step
 │       │   └── solver.rs                      # stub
 │       │
-│       ├── relativity/                        # einstein, constraints, evolution
+│       ├── relativity/                        # einstein, constraints, evolution, gauge, bssn
  │       │   ├── bssn.rs                        # BSSN state, conversions, RHS + RK4
 │       │   ├── einstein.rs                    # G_mu_nu from Ricci and metric
 │       │   ├── constraints.rs                 # Hamiltonian + momentum constraints
@@ -425,7 +426,7 @@ long-lived evolutions use BSSN. So the long-run bound is recorded as an
 ignored test and the roadmap's BSSN phase is what unlocks
 `Stable numerical evolution`.
 
-Next up is constraint-solving initial data, then BSSN.
+Next up is constraint-solving initial data, then un-ignoring the long-run bound (`Stable numerical evolution`).
 Plain ADM is weakly hyperbolic, so it is useful for wave tests but not for
 stable long runs.
 
