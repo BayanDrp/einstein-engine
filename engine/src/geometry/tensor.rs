@@ -60,6 +60,36 @@ impl<const D: usize> IndexMut<(usize, usize)> for Tensor2<D> {
     }
 }
 
+/// determinant of an NxN matrix by Gaussian elimination with partial
+/// pivoting; panics on a singular matrix, like `invert`
+pub fn det<const N: usize>(m: &[[f64; N]; N]) -> f64 {
+    let mut a = *m;
+    let mut result = 1.0f64;
+
+    for col in 0..N {
+        let pivot = (col..N)
+            .max_by(|&x, &y| a[x][col].abs().partial_cmp(&a[y][col].abs()).unwrap())
+            .unwrap();
+        if pivot != col {
+            a.swap(col, pivot);
+            result = -result;
+        }
+        let d = a[col][col];
+        assert!(d.abs() > 1e-15, "singular matrix");
+        result *= d;
+        for row in (col + 1)..N {
+            let factor = a[row][col] / d;
+            if factor != 0.0 {
+                for j in col..N {
+                    a[row][j] -= factor * a[col][j];
+                }
+            }
+        }
+    }
+
+    result
+}
+
 /// invert an NxN matrix by Gauss-Jordan, panics if singular
 pub fn invert<const N: usize>(m: &[[f64; N]; N]) -> [[f64; N]; N] {
     let mut a = *m;

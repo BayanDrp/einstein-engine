@@ -80,5 +80,9 @@ name = "unit_gauge"
 path = "../tests/relativity/gauge.rs"
 
 [[test]]
+name = "unit_bssn"
+path = "../tests/relativity/bssn.rs"
+
+[[test]]
 name = "unit_initial_data_schwarzschild"
 path = "../tests/initial_data/schwarzschild.rs"
