@@ -291,11 +291,12 @@ fn k_rhs_quadratic_term_in_k() {
 // flat slice, K = 0, beta = 0, lapse alpha = 1 + x^2. the lapse term
 // is all that survives:
 //
-//   d_t K_ij = -alpha nabla_i nabla_j alpha
+//   d_t K_ij = -nabla_i nabla_j alpha
 //
 // on a flat slice Gamma = 0, so nabla_i nabla_j alpha = d_i d_j alpha.
 // for alpha = 1 + x^2 that is d_xx alpha = 2 exactly, giving
-// d_t K_xx = -2 (1 + x^2) and everything else zero.
+// d_t K_xx = -2 and everything else zero. The lapse enters only through its
+// second derivative, so the result is a constant rather than -2 (1 + x^2).
 #[test]
 fn k_rhs_lapse_second_derivative() {
     let grid = Arc::new(Grid::new([7, 3], [0.5, 0.5], [0.0, 0.0]));
@@ -323,7 +324,7 @@ fn k_rhs_lapse_second_derivative() {
     for i in 2..grid.shape[0] - 2 {
         let x = grid.coords([i, 1])[0];
         let t = *rhs.get([i, 1]);
-        let expected = -2.0 * (1.0 + x * x);
+        let expected = -2.0;
         assert!(
             (t[(0, 0)] - expected).abs() < 1e-12,
             "x = {x}: got {} want {expected}",

@@ -117,7 +117,7 @@ pub fn spatial_metric_rhs<const D: usize>(
 /// right-hand side of the ADM evolution equation for the extrinsic
 /// curvature, in vacuum:
 ///
-///   d_t K_ij = -alpha nabla_i nabla_j alpha
+///   d_t K_ij = -nabla_i nabla_j alpha
 ///              + alpha (R_ij - 2 K_ik K^k_j + K K_ij)
 ///              + L_beta K_ij
 ///
@@ -244,8 +244,8 @@ pub fn extrinsic_curvature_rhs<const D: usize>(
                     nabla_nabla_alpha -= gamma_c.data[k][i][j] * *grad_alpha[k].get(idx);
                 }
 
-                // -alpha nabla_i nabla_j alpha
-                let mut value = -alpha * nabla_nabla_alpha;
+                // -nabla_i nabla_j alpha
+                let mut value = -nabla_nabla_alpha;
 
                 // + alpha (R_ij - 2 K_ik K^k_j + K K_ij)
                 value += alpha
