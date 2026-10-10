@@ -3,7 +3,7 @@
 //
 // Evolution is two halves:
 //   1. the right-hand side  (relativity::evolution)
-//   2. a time integrator   (numerics::rk4, RK4 over EvolutionState)
+//   2. a time integrator   (numerics::rk4, RK4 over AdmState)
 // both are implemented, so the wave below is actually transported rather
 // than nudged once by hand.
 
@@ -11,7 +11,7 @@ use einstein_engine::geometry::metric::{ExtrinsicCurvature, ShiftField, SliceMet
 use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
-use einstein_engine::numerics::rk4::EvolutionState;
+use einstein_engine::numerics::rk4::AdmState;
 use einstein_engine::relativity::evolution::{extrinsic_curvature_rhs, spatial_metric_rhs};
 use std::sync::Arc;
 
@@ -34,7 +34,7 @@ fn max_abs(field: &Field<Tensor2<D>, D>) -> f64 {
 
 /// x position of the h_yy crest, refined parabolically so the reading is not
 /// quantised to whole cells
-fn crest_x(state: &EvolutionState<D>, near: f64) -> f64 {
+fn crest_x(state: &AdmState<D>, near: f64) -> f64 {
     let n = state.grid.shape[0];
     let mut best = 0usize;
     let mut best_value = f64::NEG_INFINITY;
@@ -141,7 +141,7 @@ fn main() {
     let dt = 0.05;
     let steps = 4;
 
-    let mut state = EvolutionState {
+    let mut state = AdmState {
         grid: grid.clone(),
         gamma: wave_gamma,
         k: wave_k,

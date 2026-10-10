@@ -16,7 +16,7 @@ use crate::relativity::evolution::{
 use crate::relativity::gauge;
 
 #[derive(Debug, Clone)]
-pub struct EvolutionState<const D: usize> {
+pub struct AdmState<const D: usize> {
     pub grid: Arc<Grid<D>>,
     pub gamma: SliceMetric<D>,
     pub k: ExtrinsicCurvature<D>,
@@ -24,7 +24,7 @@ pub struct EvolutionState<const D: usize> {
     pub shift: ShiftField<D>,
 }
 
-impl<const D: usize> EvolutionState<D> {
+impl<const D: usize> AdmState<D> {
     /// Minkowski initial data:
     ///
     /// γ_ij = δ_ij

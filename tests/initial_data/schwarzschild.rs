@@ -2,7 +2,7 @@ use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
 use einstein_engine::initial_data::schwarzschild::schwarzschild;
-use einstein_engine::numerics::rk4::EvolutionState;
+use einstein_engine::numerics::rk4::AdmState;
 use einstein_engine::relativity::constraints::{hamiltonian_constraint, momentum_constraint};
 use einstein_engine::validation::constraints::residuals;
 use std::sync::Arc;
@@ -91,7 +91,7 @@ fn momentum_constraint_is_exactly_zero() {
 
 // Largest |H| over a fixed physical window, so two grids of different spacing
 // are compared on the same region rather than on different cell counts.
-fn window_hamiltonian_max(state: &EvolutionState<D>, lo: f64, hi: f64) -> f64 {
+fn window_hamiltonian_max(state: &AdmState<D>, lo: f64, hi: f64) -> f64 {
     let (config, values) = periodic();
     let h = hamiltonian_constraint(
         &state.gamma,
@@ -173,7 +173,7 @@ fn in_window(c: [f64; D], lo: f64, hi: f64) -> bool {
 // |H| and |M| over a fixed physical window, away from the periodic faces: the
 // boundary stencils wrap around data that is not periodic, so a layer of a
 // couple of cells there is not physical and would otherwise dominate.
-fn window_constraints(state: &EvolutionState<D>, lo: f64, hi: f64) -> (f64, f64) {
+fn window_constraints(state: &AdmState<D>, lo: f64, hi: f64) -> (f64, f64) {
     let (config, values) = periodic();
     let h = hamiltonian_constraint(
         &state.gamma,
@@ -205,7 +205,7 @@ fn window_constraints(state: &EvolutionState<D>, lo: f64, hi: f64) -> (f64, f64)
     (worst_h, worst_m)
 }
 
-fn window_max_abs_k(state: &EvolutionState<D>, lo: f64, hi: f64) -> f64 {
+fn window_max_abs_k(state: &AdmState<D>, lo: f64, hi: f64) -> f64 {
     let mut worst = 0.0f64;
     state.grid.for_each_index(|idx| {
         if !in_window(state.grid.coords(idx), lo, hi) {
@@ -222,7 +222,7 @@ fn window_max_abs_k(state: &EvolutionState<D>, lo: f64, hi: f64) -> f64 {
 }
 
 // Same window, but on the right-hand side of the state.
-fn window_rhs_maxes(state: &EvolutionState<D>, lo: f64, hi: f64) -> (f64, f64, f64, f64) {
+fn window_rhs_maxes(state: &AdmState<D>, lo: f64, hi: f64) -> (f64, f64, f64, f64) {
     let (config, values) = periodic();
     let r = state.rhs(&config, &values);
 

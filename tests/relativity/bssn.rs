@@ -5,7 +5,7 @@ use einstein_engine::geometry::tensor::{det, invert, Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
 use einstein_engine::initial_data::schwarzschild::schwarzschild;
-use einstein_engine::numerics::rk4::EvolutionState;
+use einstein_engine::numerics::rk4::AdmState;
 use einstein_engine::relativity::bssn::BssnState;
 use einstein_engine::relativity::constraints::hamiltonian_constraint;
 use std::sync::Arc;
@@ -79,7 +79,7 @@ fn max_abs_vector_field(a: &Field<Vector<D>, D>) -> f64 {
 // non-flat metric, non-vanishing trace-full extrinsic curvature, curved lapse
 // and a nonzero shift. Everything is period-matching so no stencil anywhere,
 // including the faces, sees a jump.
-fn admixtures(grid: Arc<Grid<D>>) -> EvolutionState<D> {
+fn admixtures(grid: Arc<Grid<D>>) -> AdmState<D> {
     let mut gamma = Field::new(grid.clone(), Tensor2::zero());
     let mut k = Field::new(grid.clone(), Tensor2::zero());
     let mut lapse = Field::new(grid.clone(), 0.0);
@@ -119,7 +119,7 @@ fn admixtures(grid: Arc<Grid<D>>) -> EvolutionState<D> {
         shift.set(idx, b);
     });
 
-    EvolutionState {
+    AdmState {
         grid: grid.clone(),
         gamma,
         k,
@@ -256,7 +256,7 @@ fn bssn_to_adm_roundtrips() {
 // Low-amplitude, smooth, periodic data off flat space. Both formulations then
 // evolve a nearly linear problem, so agreement between ADM and BSSN is sharp
 // instead of being buried under mesh truncation.
-fn rippled(grid: Arc<Grid<D>>) -> EvolutionState<D> {
+fn rippled(grid: Arc<Grid<D>>) -> AdmState<D> {
     let eps = 1.0e-2;
     let mut gamma = Field::new(grid.clone(), Tensor2::zero());
     let mut k = Field::new(grid.clone(), Tensor2::zero());
@@ -304,7 +304,7 @@ fn rippled(grid: Arc<Grid<D>>) -> EvolutionState<D> {
         k.set(idx, kk);
     });
 
-    EvolutionState {
+    AdmState {
         grid: grid.clone(),
         gamma,
         k,

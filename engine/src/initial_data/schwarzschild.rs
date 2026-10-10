@@ -8,7 +8,7 @@ use crate::geometry::metric::{
 };
 use crate::geometry::tensor::Tensor2;
 use crate::grid::{Field, Grid};
-use crate::numerics::rk4::EvolutionState;
+use crate::numerics::rk4::AdmState;
 
 /// Construct Schwarzschild initial data in isotropic Cartesian coordinates.
 ///
@@ -23,7 +23,7 @@ use crate::numerics::rk4::EvolutionState;
 pub fn schwarzschild<const D: usize>(
     grid: Arc<Grid<D>>,
     mass: f64,
-) -> Result<EvolutionState<D>, &'static str> {
+) -> Result<AdmState<D>, &'static str> {
     // check that the grid is 3D, since Schwarzschild initial data is only implemented in 3D
     if D != 3 {
         return Err("Schwarzschild initial data only implemented in 3D");
@@ -88,7 +88,7 @@ pub fn schwarzschild<const D: usize>(
         gamma.set(idx, metric);
     });
 
-    Ok(EvolutionState {
+    Ok(AdmState {
         grid,
         gamma,
         k,

@@ -7,7 +7,7 @@ use einstein_engine::geometry::metric::{
 use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
-use einstein_engine::numerics::rk4::EvolutionState;
+use einstein_engine::numerics::rk4::AdmState;
 use einstein_engine::relativity::evolution::extrinsic_curvature_rhs;
 use einstein_engine::relativity::gauge::{lapse_rhs, shift_rhs};
 use std::sync::Arc;
@@ -235,7 +235,7 @@ fn shift_rhs_is_zero() {
     assert!(rhs.data.iter().all(|v| v == &Vector::<D>::zero()));
 }
 
-// The gauge is wired into EvolutionState::rhs, not just sitting in gauge.rs.
+// The gauge is wired into AdmState::rhs, not just sitting in gauge.rs.
 // Flat slice, alpha = 1, K = diag(1, 1) has trace 2, so the returned lapse
 // derivative is -4 at every point.
 #[test]
@@ -248,7 +248,7 @@ fn state_rhs_uses_the_gauge() {
     let lapse = constant_lapse(grid.clone(), 1.0);
     let shift = zero_shift(grid.clone());
 
-    let state = EvolutionState::<D> {
+    let state = AdmState::<D> {
         grid: grid.clone(),
         gamma,
         k,
@@ -282,7 +282,7 @@ fn rk4_step_reenforces_dirichlet_faces() {
     let boundary = BoundaryConfig::<D>::dirichlet();
     let boundary_values = BoundaryValues::<D>::uniform(0.5);
 
-    let state = EvolutionState::<D> {
+    let state = AdmState::<D> {
         grid: grid.clone(),
         gamma: flat(grid.clone()),
         k: constant_tensor(grid.clone(), |i, j| if i == j { 1.0 } else { 0.0 }),
@@ -315,7 +315,7 @@ fn rk4_step_reenforces_neumann_faces() {
     let boundary = BoundaryConfig::<D>::neumann();
     let boundary_values = BoundaryValues::<D>::uniform(0.0);
 
-    let state = EvolutionState::<D> {
+    let state = AdmState::<D> {
         grid: grid.clone(),
         gamma: flat(grid.clone()),
         k: constant_tensor(grid.clone(), |i, j| if i == j { 1.0 } else { 0.0 }),
@@ -350,7 +350,7 @@ fn boundary_enforcement_leaves_the_metric_and_shift_alone() {
     let boundary = BoundaryConfig::<D>::dirichlet();
     let boundary_values = BoundaryValues::<D>::uniform(0.25);
 
-    let state = EvolutionState::<D> {
+    let state = AdmState::<D> {
         grid: grid.clone(),
         gamma: flat(grid.clone()),
         k: constant_tensor(grid.clone(), |i, j| if i == j { 1.0 } else { 0.0 }),
@@ -427,7 +427,7 @@ fn gauge_made_lapse_feeds_back_into_the_k_equation() {
         extrinsic.set(idx, k);
     });
 
-    let state = EvolutionState::<D> {
+    let state = AdmState::<D> {
         grid: grid.clone(),
         gamma: spatial,
         k: extrinsic,

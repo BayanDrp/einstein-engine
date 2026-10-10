@@ -2,7 +2,7 @@ use einstein_engine::geometry::metric::{ExtrinsicCurvature, SliceMetric};
 use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
-use einstein_engine::numerics::rk4::EvolutionState;
+use einstein_engine::numerics::rk4::AdmState;
 use einstein_engine::validation::constraints::{residuals, ConstraintResidual};
 use std::sync::Arc;
 
@@ -39,7 +39,7 @@ fn g_prime(x: f64) -> f64 {
     -AMP * K * (K * (x - X0)).sin()
 }
 
-fn wave_state(grid: Arc<Grid<D>>) -> EvolutionState<D> {
+fn wave_state(grid: Arc<Grid<D>>) -> AdmState<D> {
     let mut gamma: SliceMetric<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
     let mut k: ExtrinsicCurvature<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
@@ -60,7 +60,7 @@ fn wave_state(grid: Arc<Grid<D>>) -> EvolutionState<D> {
         k.set(idx, kij);
     });
 
-    EvolutionState {
+    AdmState {
         grid: grid.clone(),
         gamma,
         k,
@@ -69,7 +69,7 @@ fn wave_state(grid: Arc<Grid<D>>) -> EvolutionState<D> {
     }
 }
 
-fn measure(state: &EvolutionState<D>) -> ConstraintResidual {
+fn measure(state: &AdmState<D>) -> ConstraintResidual {
     let (boundary, boundary_values) = periodic();
     residuals(
         &state.gamma,
@@ -87,7 +87,7 @@ fn measure(state: &EvolutionState<D>) -> ConstraintResidual {
 #[test]
 fn minkowski_vacuum_residual_is_zero() {
     let grid = wave_grid();
-    let state = EvolutionState::<D>::minkowski(grid.clone());
+    let state = AdmState::<D>::minkowski(grid.clone());
 
     let r = measure(&state);
     assert!(

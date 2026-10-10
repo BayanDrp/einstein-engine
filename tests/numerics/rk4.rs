@@ -2,7 +2,7 @@ use einstein_engine::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftFie
 use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
-use einstein_engine::numerics::rk4::EvolutionState;
+use einstein_engine::numerics::rk4::AdmState;
 use std::sync::Arc;
 
 const D: usize = 3;
@@ -52,7 +52,7 @@ fn g_prime(x: f64) -> f64 {
 /// K_ij = -1/2 d_t h_ij at first order, and a right-moving profile has
 /// d_t = -d_x, so K_yy = +1/2 g'(x). The opposite sign silently builds a
 /// left-moving wave instead.
-fn wave_state(grid: Arc<Grid<D>>) -> EvolutionState<D> {
+fn wave_state(grid: Arc<Grid<D>>) -> AdmState<D> {
     let mut gamma: SliceMetric<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
     let mut k: ExtrinsicCurvature<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
@@ -76,7 +76,7 @@ fn wave_state(grid: Arc<Grid<D>>) -> EvolutionState<D> {
     let lapse: LapseField<D> = Field::new(grid.clone(), 1.0);
     let shift: ShiftField<D> = Field::new(grid.clone(), Vector::<D>::zero());
 
-    EvolutionState {
+    AdmState {
         grid: grid.clone(),
         gamma,
         k,
@@ -85,7 +85,7 @@ fn wave_state(grid: Arc<Grid<D>>) -> EvolutionState<D> {
     }
 }
 
-fn advance(state: &EvolutionState<D>, dt: f64, steps: usize) -> EvolutionState<D> {
+fn advance(state: &AdmState<D>, dt: f64, steps: usize) -> AdmState<D> {
     let (config, values) = periodic();
     let mut current = state.clone();
     for _ in 0..steps {
@@ -101,7 +101,7 @@ fn advance(state: &EvolutionState<D>, dt: f64, steps: usize) -> EvolutionState<D
 /// A parabolic fit through three samples straddling the peak of a cosine
 /// locates its vertex far more precisely than one cell, which matters when
 /// the expected travel is only a handful of cells.
-fn crest_x(state: &EvolutionState<D>, center: f64, window: f64) -> f64 {
+fn crest_x(state: &AdmState<D>, center: f64, window: f64) -> f64 {
     let n = state.grid.shape[0];
     let mut best = 0usize;
     let mut best_value = f64::NEG_INFINITY;
@@ -132,7 +132,7 @@ fn crest_x(state: &EvolutionState<D>, center: f64, window: f64) -> f64 {
 }
 
 /// largest absolute difference of one component between two states
-fn component_error(a: &EvolutionState<D>, b: &EvolutionState<D>, i: usize, j: usize) -> f64 {
+fn component_error(a: &AdmState<D>, b: &AdmState<D>, i: usize, j: usize) -> f64 {
     let mut worst = 0.0f64;
     a.grid.for_each_index(|idx| {
         worst = worst.max((a.gamma.get(idx)[(i, j)] - b.gamma.get(idx)[(i, j)]).abs());
@@ -145,7 +145,7 @@ fn component_error(a: &EvolutionState<D>, b: &EvolutionState<D>, i: usize, j: us
 #[test]
 fn flat_slice_is_a_fixed_point_over_many_steps() {
     let grid = small_grid();
-    let state = EvolutionState::<D>::minkowski(grid.clone());
+    let state = AdmState::<D>::minkowski(grid.clone());
     let evolved = advance(&state, 0.01, 200);
 
     assert_eq!(evolved.gamma.data, state.gamma.data, "gamma drifted");
@@ -194,7 +194,7 @@ fn gauge_evolves_the_lapse_and_freezes_the_shift() {
 fn axpy_at_zero_scale_leaves_state_identical() {
     let grid = small_grid();
     let (config, values) = periodic();
-    let state = EvolutionState::<D>::minkowski(grid.clone());
+    let state = AdmState::<D>::minkowski(grid.clone());
 
     let unchanged = state.axpy(0.0, &state.rhs(&config, &values));
     assert_eq!(unchanged.gamma.data, state.gamma.data);
@@ -272,7 +272,7 @@ fn rk4_temporal_error_falls_as_fourth_power() {
 fn step_rk4_rejects_zero_timestep() {
     let grid = small_grid();
     let (config, values) = periodic();
-    EvolutionState::<D>::minkowski(grid).step_rk4(0.0, &config, &values);
+    AdmState::<D>::minkowski(grid).step_rk4(0.0, &config, &values);
 }
 
 #[test]
@@ -280,5 +280,5 @@ fn step_rk4_rejects_zero_timestep() {
 fn step_rk4_rejects_negative_timestep() {
     let grid = small_grid();
     let (config, values) = periodic();
-    EvolutionState::<D>::minkowski(grid).step_rk4(-0.01, &config, &values);
+    AdmState::<D>::minkowski(grid).step_rk4(-0.01, &config, &values);
 }

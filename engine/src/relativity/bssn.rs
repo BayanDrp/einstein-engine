@@ -12,7 +12,7 @@ use crate::geometry::tensor::{det, invert, Tensor2, Vector};
 use crate::grid::boundary::{apply_nonperiodic, BoundaryConfig, BoundaryValues};
 use crate::grid::{Field, Grid};
 use crate::numerics::derivatives::central_partial;
-use crate::numerics::rk4::EvolutionState;
+use crate::numerics::rk4::AdmState;
 
 /// copy a slice tensor into plain matrix form for `invert` and `det`
 fn matrix<const D: usize>(t: &Tensor2<D>) -> [[f64; D]; D] {
@@ -138,7 +138,7 @@ impl<const D: usize> BssnState<D> {
     /// `boundary` is needed only for the Christoffel symbols of gtilde, on
     /// which the pointwise split itself does not depend.
     pub fn from_adm(
-        adm: &EvolutionState<D>,
+        adm: &AdmState<D>,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> Self {
@@ -222,7 +222,7 @@ impl<const D: usize> BssnState<D> {
     ///
     ///   gamma_ij = exp(4 phi) gtilde_ij
     ///   K_ij = exp(4 phi) A tilde_ij + (1/3) gamma_ij K
-    pub fn to_adm(&self) -> EvolutionState<D> {
+    pub fn to_adm(&self) -> AdmState<D> {
         let mut gamma = Field::new(self.grid.clone(), Tensor2::zero());
         let mut k = Field::new(self.grid.clone(), Tensor2::zero());
 
@@ -246,7 +246,7 @@ impl<const D: usize> BssnState<D> {
             k.set(idx, kk);
         });
 
-        EvolutionState {
+        AdmState {
             grid: self.grid.clone(),
             gamma,
             k,
@@ -761,7 +761,7 @@ impl<const D: usize> BssnState<D> {
 
     /// Re-impose the boundary conditions on the evolved state.
     ///
-    /// Mirrors `EvolutionState`: after an RK4 step the face values have
+    /// Mirrors `AdmState`: after an RK4 step the face values have
     /// drifted, and only the scalar lapse can be held with the current
     /// scalar-per-face `BoundaryValues`. A uniform Dirichlet value over all
     /// components of a tensor or vector field would silently overwrite the
@@ -828,7 +828,7 @@ impl<const D: usize> BssnState<D> {
     ) -> Self {
         assert!(dt.is_finite() && dt > 0.0);
 
-        // as in EvolutionState: start from boundary-compliant data, re-impose
+        // as in AdmState: start from boundary-compliant data, re-impose
         // the boundary conditions after every intermediate stage
         let mut y0 = self.clone();
         y0.enforce_boundaries(boundary, boundary_values);

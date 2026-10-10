@@ -89,7 +89,7 @@ pub fn apply<const NDIM: usize>(
 /// by every call. Vector and tensor fields need a value per component, which
 /// `BoundaryValues` cannot express, so callers must apply this only to fields
 /// whose condition is genuinely scalar (the lapse, for now). See
-/// `EvolutionState::enforce_boundaries`.
+/// `AdmState::enforce_boundaries`.
 pub fn apply_nonperiodic<const NDIM: usize>(
     field: &mut Field<f64, NDIM>,
     config: &BoundaryConfig<NDIM>,
