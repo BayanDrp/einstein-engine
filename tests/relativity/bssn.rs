@@ -496,3 +496,91 @@ fn schwarzschild_slice_is_a_bssn_fixed_point() {
     assert!(worst_a < 1.0e-6, "d_t A tilde = {worst_a}");
     assert!(worst_gamma < 1.0e-6, "d_t Gamma = {worst_gamma}");
 }
+
+// The static Schwarzschild slice evolved with BSSN stays bounded: the
+// long-run counterpart of the ADM instability test. Plain ADM blows up here
+// (|H| grows 1000x by t = 0.5 and the run goes non-finite); BSSN must survive
+// the same run. Truncation-level is not achievable with periodic faces
+// wrapping non-periodic Schwarzschild data -- the faces inject O(0.01-0.1)
+// error that propagates inward -- so this asserts boundedness (finite,
+// no blow-up), not truncation. The window x, y, z in [0.8, 1.2] matches the
+// ADM long-run test.
+#[test]
+fn bssn_schwarzschild_stays_bounded_over_a_long_run() {
+    let (config, values) = periodic();
+    let h = 1.0 / 16.0;
+    let g = Arc::new(Grid::new([16; D], [h; D], ORIGIN));
+    let adm = schwarzschild::<D>(g.clone(), 1.0).unwrap();
+    let mut bssn = BssnState::from_adm(&adm, &config, &values);
+
+    let (lo, hi) = (0.8, 1.2);
+    let in_window = |c: [f64; D]| c.iter().all(|&x| x >= lo && x <= hi);
+
+    let window_h = |b: &BssnState<D>| -> f64 {
+        let a = b.to_adm();
+        let zero_rho = Field::new(g.clone(), 0.0);
+        let hres = hamiltonian_constraint(&a.gamma, &a.k, &zero_rho, &config, &values);
+        let mut worst = 0.0f64;
+        g.for_each_index(|idx| {
+            if in_window(g.coords(idx)) {
+                worst = worst.max(hres.get(idx).abs());
+            }
+        });
+        worst
+    };
+    let window_k = |b: &BssnState<D>| -> (f64, f64) {
+        let mut wk = 0.0f64;
+        let mut wa = 0.0f64;
+        g.for_each_index(|idx| {
+            if !in_window(g.coords(idx)) {
+                return;
+            }
+            wk = wk.max(b.trace_k.get(idx).abs());
+            let at = b.conformal_a.get(idx);
+            for i in 0..D {
+                for j in 0..D {
+                    wa = wa.max(at[(i, j)].abs());
+                }
+            }
+        });
+        (wk, wa)
+    };
+
+    let initial_h = window_h(&bssn);
+    assert!(
+        initial_h > 0.0,
+        "the data must start with a nonzero truncation residual"
+    );
+    let mut worst_h = initial_h;
+
+    let dt = 0.5 * h;
+    let steps = 40; // t = 1.0
+    for step in 1..=steps {
+        bssn = bssn.step_rk4(dt, &config, &values);
+        let (wk, wa) = window_k(&bssn);
+        assert!(
+            wk.is_finite() && wa.is_finite(),
+            "went non-finite at step {step}"
+        );
+        if step % 10 == 0 {
+            let hres = window_h(&bssn);
+            worst_h = worst_h.max(hres);
+            println!(
+                "step {step:>3} (t = {:.3}): |H| = {hres:.3e}, max|K| = {wk:.3e}, max|A| = {wa:.3e}",
+                step as f64 * dt
+            );
+        }
+    }
+
+    let final_h = window_h(&bssn);
+    worst_h = worst_h.max(final_h);
+    let (final_k, final_a) = window_k(&bssn);
+    let ratio = worst_h / initial_h;
+    println!(
+        "t = 1: |H| = {final_h:.3e}, max|K| = {final_k:.3e}, max|A| = {final_a:.3e}; worst/initial = {ratio:.3}"
+    );
+
+    assert!(final_k < 1.0, "K blew up to {final_k}");
+    assert!(final_a < 1.0, "A tilde blew up to {final_a}");
+    assert!(ratio < 1000.0, "|H| blew up by {ratio}x");
+}

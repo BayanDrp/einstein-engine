@@ -776,6 +776,41 @@ impl<const D: usize> BssnState<D> {
         apply_nonperiodic(&mut self.lapse, boundary, boundary_values);
     }
 
+    /// Re-impose the algebraic BSSN constraints pointwise:
+    /// det(gtilde) = 1 and gtilde^ij A tilde_ij = 0.
+    /// Standard practice, enforced at every integrator substep, to stop
+    /// constraint violations feeding back into the evolution.
+    fn enforce_constraints(&mut self) {
+        self.grid.for_each_index(|idx| {
+            let gtilde = *self.conformal_metric.get(idx);
+            let d = det(&matrix(&gtilde));
+            let s = d.powf(-1.0 / 3.0);
+            let mut g = Tensor2::zero();
+            for i in 0..D {
+                for j in 0..D {
+                    g[(i, j)] = s * gtilde[(i, j)];
+                }
+            }
+            self.conformal_metric.set(idx, g);
+
+            let gi = invert(&matrix(&g));
+            let at = *self.conformal_a.get(idx);
+            let mut tr = 0.0;
+            for i in 0..D {
+                for j in 0..D {
+                    tr += gi[i][j] * at[(i, j)];
+                }
+            }
+            let mut a = Tensor2::zero();
+            for i in 0..D {
+                for j in 0..D {
+                    a[(i, j)] = at[(i, j)] - g[(i, j)] * tr / 3.0;
+                }
+            }
+            self.conformal_a.set(idx, a);
+        });
+    }
+
     /// self + a * rhs
     pub fn axpy(&self, a: f64, rhs: &Self) -> Self {
         assert_eq!(self.grid.shape, rhs.grid.shape);
@@ -797,19 +832,23 @@ impl<const D: usize> BssnState<D> {
         // the boundary conditions after every intermediate stage
         let mut y0 = self.clone();
         y0.enforce_boundaries(boundary, boundary_values);
+        y0.enforce_constraints();
 
         let k1 = y0.rhs(boundary, boundary_values);
 
         let mut y2 = y0.axpy(0.5 * dt, &k1);
         y2.enforce_boundaries(boundary, boundary_values);
+        y2.enforce_constraints();
         let k2 = y2.rhs(boundary, boundary_values);
 
         let mut y3 = y0.axpy(0.5 * dt, &k2);
         y3.enforce_boundaries(boundary, boundary_values);
+        y3.enforce_constraints();
         let k3 = y3.rhs(boundary, boundary_values);
 
         let mut y4 = y0.axpy(dt, &k3);
         y4.enforce_boundaries(boundary, boundary_values);
+        y4.enforce_constraints();
         let k4 = y4.rhs(boundary, boundary_values);
 
         let mut next = y0;
@@ -818,6 +857,7 @@ impl<const D: usize> BssnState<D> {
         next.add_scaled_in_place(dt / 3.0, &k3);
         next.add_scaled_in_place(dt / 6.0, &k4);
         next.enforce_boundaries(boundary, boundary_values);
+        next.enforce_constraints();
         next
     }
 
