@@ -7,7 +7,7 @@ use crate::geometry::metric::{
     SliceMetric,
 };
 use crate::geometry::tensor::{Tensor2, Vector};
-use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
+use crate::grid::boundary::{apply_nonperiodic, BoundaryConfig, BoundaryValues};
 use crate::grid::{Field, Grid};
 use crate::relativity::evolution::{
     extrinsic_curvature_rhs,
@@ -119,6 +119,33 @@ impl<const D: usize> EvolutionState<D> {
         gauge::shift_rhs(&self.shift)
     }
 
+    /// Re-impose the boundary conditions on the evolved state.
+    ///
+    /// RK4 mixes in derivatives taken across the whole grid, so after a step
+    /// the face values no longer satisfy the configured conditions.
+    ///
+    /// Only the lapse is enforced here. `BoundaryValues` carries a single
+    /// scalar per face, which describes a scalar field and nothing more:
+    /// holding a vector to one value across all of its components, or a
+    /// rank-2 field to one value across its components, is not a statement
+    /// about the physics but a way to silently overwrite the state (a uniform
+    /// Dirichlet value on the metric sets its off-diagonals equal to its
+    /// diagonal and the metric becomes singular). The shift, metric and
+    /// extrinsic curvature are therefore left alone until a per-component
+    /// boundary type exists.
+    ///
+    /// Periodic faces are left to the wrapping stencils in every case, since
+    /// `apply`'s endpoint averaging would identify the two ends and clip the
+    /// field. Corners, where several faces meet, are written by whichever axis
+    /// is handled last; with a single value per face they all agree anyway.
+    fn enforce_boundaries(
+        &mut self,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) {
+        apply_nonperiodic(&mut self.lapse, boundary, boundary_values);
+    }
+
     /// self + a * rhs
     pub fn axpy(&self, a: f64, rhs: &Self) -> Self {
         assert_eq!(self.grid.shape, rhs.grid.shape);
@@ -138,47 +165,37 @@ impl<const D: usize> EvolutionState<D> {
     ) -> Self {
         assert!(dt.is_finite() && dt > 0.0);
 
+        // Y_n, with the boundary conditions already satisfied, so every stage
+        // starts from compliant data.
+        let mut y0 = self.clone();
+        y0.enforce_boundaries(boundary, boundary_values);
+
         // k1 = F(Y_n)
-        let k1 = self.rhs(
-            boundary,
-            boundary_values,
-        );
+        let k1 = y0.rhs(boundary, boundary_values);
 
         // k2 = F(Y_n + dt/2 * k1)
-        let y2 = self.axpy(
-            0.5 * dt,
-            &k1,
-        );
+        let mut y2 = y0.axpy(0.5 * dt, &k1);
 
-        let k2 = y2.rhs(
-            boundary,
-            boundary_values,
-        );
+        y2.enforce_boundaries(boundary, boundary_values);
+
+        let k2 = y2.rhs(boundary, boundary_values);
 
         // k3 = F(Y_n + dt/2 * k2)
-        let y3 = self.axpy(
-            0.5 * dt,
-            &k2,
-        );
+        let mut y3 = y0.axpy(0.5 * dt, &k2);
 
-        let k3 = y3.rhs(
-            boundary,
-            boundary_values,
-        );
+        y3.enforce_boundaries(boundary, boundary_values);
+
+        let k3 = y3.rhs(boundary, boundary_values);
 
         // k4 = F(Y_n + dt * k3)
-        let y4 = self.axpy(
-            dt,
-            &k3,
-        );
+        let mut y4 = y0.axpy(dt, &k3);
 
-        let k4 = y4.rhs(
-            boundary,
-            boundary_values,
-        );
+        y4.enforce_boundaries(boundary, boundary_values);
+
+        let k4 = y4.rhs(boundary, boundary_values);
 
         // Y_{n+1}
-        let mut next = self.clone();
+        let mut next = y0;
 
         next.add_scaled_in_place(
             dt / 6.0,
@@ -198,6 +215,11 @@ impl<const D: usize> EvolutionState<D> {
         next.add_scaled_in_place(
             dt / 6.0,
             &k4,
+        );
+
+        next.enforce_boundaries(
+            boundary,
+            boundary_values,
         );
 
         next
@@ -249,7 +271,7 @@ impl<const D: usize> EvolutionState<D> {
                     a * shift_rhs[i];
             }
 
-            self.shift.set(idx, shift);
+        self.shift.set(idx, shift);
         });
     }
 }

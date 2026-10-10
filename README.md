@@ -346,9 +346,10 @@ The numerical foundation, the 3+1 geometry, and the full curvature → Einstein 
 * `numerics::derivatives::shift_derivative` supplies the `beta^k d_k` advection term that the Lie derivatives need.
 * `engine/examples/evolution.rs` checks that flat spacetime stays fixed, then transports a plane wave with RK4 and reports the speed it actually travels at.
 * `numerics::rk4` adds `EvolutionState` (the four ADM variables) and a Runge-Kutta 4 step; the state also carries `lapse_rhs` and `shift_rhs`, which `rhs` composes into the gauge part of `d(state)/dt`.
+* `step_rk4` re-imposes the boundary conditions on the evolved state (and on the state it starts from), otherwise RK4 would leave the faces wherever the stencils pushed them. Enforcement is scoped to the lapse: `BoundaryValues` holds one scalar per face, which is a complete description of a scalar condition and nothing more. Holding a vector or a rank-2 field to a single value across all of its components is not a statement about the physics but a way to silently overwrite the state, so the shift, metric and extrinsic curvature are left alone until a per-component boundary type exists. Periodic faces are skipped everywhere, since the wrapping stencils already carry that coupling and `boundary::apply`'s endpoint averaging would clip the field. **Known limitation:** the derivative stencils still read the same single scalar per face, so a Dirichlet run does feed that value into the metric's face derivatives; periodic grids, where we actually run, are unaffected.
 * `relativity::gauge` gives those variables a time derivative: 1+log slicing for the lapse, `d_t alpha = beta^i d_i alpha - 2 alpha K` with `K = gamma^ij K_ij`, and a shift that stays frozen because a Gamma-driver would need `d_t Gamma^i`, i.e. third derivatives of the metric.
 * `validation::constraints::residuals` reduces both Einstein constraints on a slice to two numbers, so drift can be measured instead of assumed.
-* 87 unit tests pass (`cargo test` from inside `engine/`).
+* 92 unit tests pass (`cargo test` from inside `engine/`).
 
 Two of the RK4 tests are the ones worth trusting. A plane wave built to
 travel at light speed is measured travelling at 0.9977, against the 0.9984
@@ -386,6 +387,14 @@ transversely traceless so its `K` trace only survives through
 slice is indistinguishable from geodesic at this horizon. Tracing `K` with
 `delta^ij` instead would give exactly zero, so a test pins that the
 inverse metric is really used.
+
+Traceless data is a weak test of a slicing condition, so there is a second
+one where it actually bites: a flat slice with `trace K = 1 + x^2`, so
+`d_t alpha = -2 alpha (1 + x^2)` is large and curved. After one step the
+lapse has a spread of `0.33`, and feeding that gauge-made lapse back into
+`extrinsic_curvature_rhs` changes `d_t K` by `1.28` -- the `-alpha nabla_i
+nabla_j alpha` term the gauge created. That closes the loop from the gauge
+to the geometry, which no other test does.
 
 Next up is constraint-solving initial data, then BSSN.
 Plain ADM is weakly hyperbolic, so it is useful for wave tests but not for

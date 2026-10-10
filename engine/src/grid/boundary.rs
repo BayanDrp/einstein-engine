@@ -65,72 +65,115 @@ pub fn apply<const NDIM: usize>(
     config: &BoundaryConfig<NDIM>,
     values: &BoundaryValues<NDIM>,
 ) {
+    for a in 0..NDIM {
+        for side in 0..2 {
+            let (kind, value) = match side {
+                0 => (config.lower[a], values.lower[a]),
+                _ => (config.upper[a], values.upper[a]),
+            };
+            apply_face(field, a, side, kind, value, true);
+        }
+    }
+}
+
+/// Like [`apply`], but leaves periodic faces untouched.
+///
+/// The periodic averaging in `apply` identifies the two end faces as a single
+/// physical point, which is right for a grid that stores a duplicated
+/// endpoint. An evolving field is sampled at distinct points across the wrap,
+/// though, so averaging the ends every step would clip it. Periodic coupling
+/// is already carried by the wrapping derivative stencils, so this variant
+/// imposes only the Dirichlet and Neumann faces.
+///
+/// Note that this is still a *scalar* condition: one value per face is shared
+/// by every call. Vector and tensor fields need a value per component, which
+/// `BoundaryValues` cannot express, so callers must apply this only to fields
+/// whose condition is genuinely scalar (the lapse, for now). See
+/// `EvolutionState::enforce_boundaries`.
+pub fn apply_nonperiodic<const NDIM: usize>(
+    field: &mut Field<f64, NDIM>,
+    config: &BoundaryConfig<NDIM>,
+    values: &BoundaryValues<NDIM>,
+) {
+    for a in 0..NDIM {
+        for side in 0..2 {
+            let (kind, value) = match side {
+                0 => (config.lower[a], values.lower[a]),
+                _ => (config.upper[a], values.upper[a]),
+            };
+            apply_face(field, a, side, kind, value, false);
+        }
+    }
+}
+
+fn apply_face<const NDIM: usize>(
+    field: &mut Field<f64, NDIM>,
+    axis: usize,
+    side: usize,
+    kind: BoundaryKind,
+    value: f64,
+    include_periodic: bool,
+) {
     let shape = field.grid.shape;
     let spacing = field.grid.spacing;
     let grid = field.grid.clone();
 
-    for a in 0..NDIM {
-        let n = shape[a];
-        if n == 0 {
-            continue;
-        }
-        let edge = n - 1;
+    let n = shape[axis];
+    if n == 0 {
+        return;
+    }
+    let edge = n - 1;
+    let face = if side == 0 { 0 } else { edge };
 
-        for (side, kinds, vals) in [
-            (0usize, &config.lower, &values.lower),
-            (1usize, &config.upper, &values.upper),
-        ] {
-            let face = if side == 0 { 0 } else { edge };
-            match kinds[a] {
-                BoundaryKind::Dirichlet => {
-                    let v = vals[a];
-                    grid.for_each_index(|idx| {
-                        if idx[a] == face {
-                            field.set(idx, v);
-                        }
-                    });
+    match kind {
+        BoundaryKind::Dirichlet => {
+            grid.for_each_index(|idx| {
+                if idx[axis] == face {
+                    field.set(idx, value);
                 }
-                BoundaryKind::Neumann => {
-                    let dx = spacing[a];
-                    let g = vals[a];
-                    grid.for_each_index(|idx| {
-                        if idx[a] == face {
-                            let f_inner = if n >= 2 {
-                                let mut inner = idx;
-                                inner[a] = if side == 0 { 1 } else { edge - 1 };
-                                *field.get(inner)
-                            } else {
-                                0.0
-                            };
-                            field.set(idx, f_inner + g * dx);
-                        }
-                    });
+            });
+        }
+        BoundaryKind::Neumann => {
+            let dx = spacing[axis];
+            grid.for_each_index(|idx| {
+                if idx[axis] == face {
+                    let f_inner = if n >= 2 {
+                        let mut inner = idx;
+                        inner[axis] = if side == 0 { 1 } else { edge - 1 };
+                        *field.get(inner)
+                    } else {
+                        0.0
+                    };
+                    field.set(idx, f_inner + value * dx);
                 }
-                BoundaryKind::Periodic => {
-                    let mut lo = Vec::new();
-                    let mut hi = Vec::new();
-                    grid.for_each_index(|idx| {
-                        if idx[a] == 0 {
-                            lo.push(*field.get(idx));
-                        }
-                        if idx[a] == edge {
-                            hi.push(*field.get(idx));
-                        }
-                    });
-                    let mut li = 0;
-                    let mut hi_i = 0;
-                    grid.for_each_index(|idx| {
-                        if idx[a] == 0 {
-                            field.set(idx, 0.5 * (lo[li] + hi[li]));
-                            li += 1;
-                        }
-                        if idx[a] == edge {
-                            field.set(idx, 0.5 * (lo[hi_i] + hi[hi_i]));
-                            hi_i += 1;
-                        }
-                    });
-                }
+            });
+        }
+        BoundaryKind::Periodic => {
+            if !include_periodic {
+                return;
             }
+            let mut lo = Vec::new();
+            let mut hi = Vec::new();
+            grid.for_each_index(|idx| {
+                if idx[axis] == 0 {
+                    lo.push(*field.get(idx));
+                }
+                if idx[axis] == edge {
+                    hi.push(*field.get(idx));
+                }
+            });
+            let mut li = 0;
+            let mut hi_i = 0;
+            grid.for_each_index(|idx| {
+                if idx[axis] == 0 {
+                    field.set(idx, 0.5 * (lo[li] + hi[li]));
+                    li += 1;
+                }
+                if idx[axis] == edge {
+                    field.set(idx, 0.5 * (lo[hi_i] + hi[hi_i]));
+                    hi_i += 1;
+                }
+            });
         }
     }
 }

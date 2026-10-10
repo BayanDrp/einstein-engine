@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use einstein_engine::grid::boundary::{
-        apply, BoundaryConfig, BoundaryKind, BoundaryValues,
+        apply, apply_nonperiodic, BoundaryConfig, BoundaryKind, BoundaryValues,
     };
     use einstein_engine::grid::{Field, Grid};
     use std::sync::Arc;
@@ -74,6 +74,27 @@ mod tests {
         assert_eq!(*f.get([0]), 4.0);
         assert_eq!(*f.get([2]), 4.0);
         assert_eq!(*f.get([1]), 100.0);
+    }
+
+    // The variant used during evolution: value faces are imposed, periodic
+    // faces are left for the wrapping stencils rather than averaged.
+    #[test]
+    fn nonperiodic_skips_periodic_faces() {
+        let grid = Arc::new(Grid::new([4], [1.0], [0.0]));
+        let mut f: Field<f64, 1> = Field::zeros(grid);
+        f.set([0], 2.0);
+        f.set([3], 6.0);
+
+        let mut config = BoundaryConfig::periodic();
+        config.lower = [BoundaryKind::Dirichlet];
+        let values = BoundaryValues {
+            lower: [10.0],
+            upper: [0.0],
+        };
+
+        apply_nonperiodic(&mut f, &config, &values);
+        assert_eq!(*f.get([0]), 10.0, "Dirichlet face should be imposed");
+        assert_eq!(*f.get([3]), 6.0, "periodic face should be untouched");
     }
 
     #[test]
