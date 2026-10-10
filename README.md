@@ -148,10 +148,11 @@ einstein-engine/
 │       │   ├── gauge.rs                        # 1+log lapse, frozen shift
 │       │   └── matter.rs                      # stub
 │       │
-│       ├── initial_data/                      # stubs
-│       │   ├── minkowski.rs
-│       │   ├── schwarzschild.rs
-│       │   └── custom.rs
+│       ├── initial_data/                      # schwarzschild implemented
+│       │   ├── mod.rs
+│       │   ├── minkowski.rs                   # stub
+│       │   ├── schwarzschild.rs               # isotropic, guard-railed
+│       │   └── custom.rs                      # stub
 │       │
 │       ├── physics/                           # stress-energy implemented
 │       │   ├── body.rs                        # stub
@@ -170,6 +171,7 @@ einstein-engine/
 │   ├── geometry/                              # christoffel, riemann, ricci,
 │   │                                           #  scalar, spatial R^(3), cov. deriv
 │   ├── physics/                               # stress_energy
+│   ├── initial_data/                          # schwarzschild
 │   ├── relativity/                            # einstein, constraints, evolution, gauge
 │   └── validation/                            # constraint monitor
 │
@@ -342,14 +344,15 @@ The numerical foundation, the 3+1 geometry, and the full curvature → Einstein 
 * Covariant derivatives (vector, covector, mixed divergence) live in `geometry/covariant_derivative.rs` — the momentum constraint already reuses the mixed divergence.
 * `physics/stress_energy.rs` provides the matter side (dust), and `relativity/einstein.rs` the left side, so `G_mu_nu = 8 pi T_mu_nu` can be assembled.
 * Both Einstein constraints are implemented and tested: the Hamiltonian constraint (`H = R^(3) + K^2 - K_ij K^ij - 16 pi rho`) and the momentum constraint (`M^i = div_j(K^i_j - delta^i_j K) - 8 pi S^i`).
-* The ADM evolution right-hand sides are implemented: `d_t gamma_ij = -2 alpha K_ij + L_beta gamma_ij` and `d_t K_ij = -alpha nabla_i nabla_j alpha + alpha (R_ij - 2 K_ik K^k_j + K K_ij) + L_beta K_ij`, both in partial-derivative form where possible and with the upper triangle mirrored so symmetry is structural.
+* The ADM evolution right-hand sides are implemented: `d_t gamma_ij = -2 alpha K_ij + L_beta gamma_ij` and `d_t K_ij = -nabla_i nabla_j alpha + alpha (R_ij - 2 K_ik K^k_j + K K_ij) + L_beta K_ij`, both in partial-derivative form where possible and with the upper triangle mirrored so symmetry is structural.
 * `numerics::derivatives::shift_derivative` supplies the `beta^k d_k` advection term that the Lie derivatives need.
 * `engine/examples/evolution.rs` checks that flat spacetime stays fixed, then transports a plane wave with RK4 and reports the speed it actually travels at.
 * `numerics::rk4` adds `EvolutionState` (the four ADM variables) and a Runge-Kutta 4 step; the state also carries `lapse_rhs` and `shift_rhs`, which `rhs` composes into the gauge part of `d(state)/dt`.
 * `step_rk4` re-imposes the boundary conditions on the evolved state (and on the state it starts from), otherwise RK4 would leave the faces wherever the stencils pushed them. Enforcement is scoped to the lapse: `BoundaryValues` holds one scalar per face, which is a complete description of a scalar condition and nothing more. Holding a vector or a rank-2 field to a single value across all of its components is not a statement about the physics but a way to silently overwrite the state, so the shift, metric and extrinsic curvature are left alone until a per-component boundary type exists. Periodic faces are skipped everywhere, since the wrapping stencils already carry that coupling and `boundary::apply`'s endpoint averaging would clip the field. **Known limitation:** the derivative stencils still read the same single scalar per face, so a Dirichlet run does feed that value into the metric's face derivatives; periodic grids, where we actually run, are unaffected.
 * `relativity::gauge` gives those variables a time derivative: 1+log slicing for the lapse, `d_t alpha = beta^i d_i alpha - 2 alpha K` with `K = gamma^ij K_ij`, and a shift that stays frozen because a Gamma-driver would need `d_t Gamma^i`, i.e. third derivatives of the metric.
 * `validation::constraints::residuals` reduces both Einstein constraints on a slice to two numbers, so drift can be measured instead of assumed.
-* 92 unit tests pass (`cargo test` from inside `engine/`).
+* `engine/src/initial_data/schwarzschild.rs` builds the isotropic Schwarzschild slice (numbers below) and refuses input that reaches the puncture; `hamiltonian_residual_converges_second_order` and `slice_is_a_discrete_fixed_point` pin the on-shell and fixed-point properties.
+* 99 unit tests pass (`cargo test` from inside `engine/`), with one more ignored (`static_slice_stays_bounded_over_a_long_run`) because plain ADM cannot yet hold a long curved run -- it is the receipt for the BSSN phase.
 
 Two of the RK4 tests are the ones worth trusting. A plane wave built to
 travel at light speed is measured travelling at 0.9977, against the 0.9984
@@ -392,9 +395,33 @@ Traceless data is a weak test of a slicing condition, so there is a second
 one where it actually bites: a flat slice with `trace K = 1 + x^2`, so
 `d_t alpha = -2 alpha (1 + x^2)` is large and curved. After one step the
 lapse has a spread of `0.33`, and feeding that gauge-made lapse back into
-`extrinsic_curvature_rhs` changes `d_t K` by `1.28` -- the `-alpha nabla_i
+`extrinsic_curvature_rhs` changes `d_t K` by `1.28` -- the `-nabla_i
 nabla_j alpha` term the gauge created. That closes the loop from the gauge
 to the geometry, which no other test does.
+
+The K equation itself then had to be corrected, and Schwarzschild is what
+caught it. The code and its unit test both carried
+`d_t K_ij = -alpha nabla_i nabla_j alpha + ...`, but ADM requires the
+unrepeated `-nabla_i nabla_j alpha` (with `alpha R_ij` next to it). Every
+slice tested before had `alpha = 1` or constant `alpha`, where a factor of
+`alpha` is invisible; on the Schwarzschild slice, with `alpha` between
+0.27 and 0.68 in the domain, it is not. With the factor out, the static
+fixed point `D_i D_j alpha = alpha R_ij` holds, and the slice is verified
+as one: pointwise against `psi = 1 + M/2r`, `gamma_ij = psi^4 delta_ij`,
+zero `K_ij`, the Schwarzschild lapse and zero shift; `|M| = 0` exactly;
+`|H|` over a window converging at second order (8.626e-3 at `h = 1/16`
+against 2.165e-3 at `h = 1/32`, ratio 3.98); and as a discrete fixed point
+where `d_t gamma = d_t alpha = d_t beta = 0` while `d_t K` sits at the
+truncation level, also second-order.
+
+That fixed point is static but not stable in this scheme. Evolved, `|H|`
+grows as `exp(lambda t)` at a rate set by the grid: shrinking `dt` from
+`h/4` to `h/100` changes nothing, a thin-density run (`M = 0.05`) blows up
+on the same schedule, and freezing the lapse makes it worse, not better.
+Plain ADM carries these weakly hyperbolic modes -- the textbook reason
+long-lived evolutions use BSSN. So the long-run bound is recorded as an
+ignored test and the roadmap's BSSN phase is what unlocks
+`Stable numerical evolution`.
 
 Next up is constraint-solving initial data, then BSSN.
 Plain ADM is weakly hyperbolic, so it is useful for wave tests but not for
