@@ -86,3 +86,7 @@ path = "../tests/relativity/bssn.rs"
 [[test]]
 name = "unit_initial_data_schwarzschild"
 path = "../tests/initial_data/schwarzschild.rs"
+
+[[test]]
+name = "unit_matter"
+path = "../tests/relativity/matter.rs"
