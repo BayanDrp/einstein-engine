@@ -6,6 +6,7 @@ use crate::geometry::tensor::{invert, Tensor2, Vector};
 use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::grid::Field;
 use crate::numerics::derivatives::{central_partial, shift_derivative};
+use crate::relativity::matter::MatterSources;
 
 /// copy one (i, j) component of a tensor field into a scalar field,
 /// so it can be differentiated
@@ -135,11 +136,15 @@ pub fn spatial_metric_rhs<const D: usize>(
 /// nabla nabla alpha and R_ij are built from the spatial Christoffel
 /// symbols. As before the result is symmetric in (i, j), so only the
 /// upper triangle is filled and then mirrored.
-pub fn extrinsic_curvature_rhs<const D: usize>(
+///
+/// Matter enters as +4 pi alpha ((S - rho) gamma_ij - 2 S_ij), whose trace
+/// is the d_t K matter term +4 pi alpha (S - 3 rho).
+pub fn extrinsic_curvature_rhs_with_matter<const D: usize>(
     lapse: &LapseField<D>,
     shift: &ShiftField<D>,
     spatial: &SliceMetric<D>,
     extrinsic: &ExtrinsicCurvature<D>,
+    matter: &MatterSources<D>,
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> Field<Tensor2<D>, D> {
@@ -197,6 +202,9 @@ pub fn extrinsic_curvature_rhs<const D: usize>(
         let gamma = spatial.get(idx);
         let gamma_c = gamma_c.get(idx);
         let r_ij = ricci.get(idx);
+        let rho = *matter.rho.get(idx);
+        let s_tr = *matter.stress_trace.get(idx);
+        let s_ij = matter.stress.get(idx);
 
         let mut gamma_matrix = [[0.0f64; D]; D];
         for i in 0..D {
@@ -251,6 +259,13 @@ pub fn extrinsic_curvature_rhs<const D: usize>(
                 value += alpha
                     * (r_ij.data[i][j] - 2.0 * k_squared[(i, j)] + trace_k * k_ij[(i, j)]);
 
+                // + 4 pi alpha ((S - rho) gamma_ij - 2 S_ij): matter sources,
+                // whose trace is the d_t K matter term +4 pi alpha (S - 3 rho)
+                value += alpha
+                    * 4.0
+                    * std::f64::consts::PI
+                    * ((s_tr - rho) * gamma[(i, j)] - 2.0 * s_ij[(i, j)]);
+
                 // + beta^k d_k K_ij
                 for k in 0..D {
                     value += beta[k] * *d_k_k[i][j].get(idx);
@@ -271,4 +286,24 @@ pub fn extrinsic_curvature_rhs<const D: usize>(
     });
 
     out
+}
+
+/// Vacuum specialization: the K equation without matter sources.
+pub fn extrinsic_curvature_rhs<const D: usize>(
+    lapse: &LapseField<D>,
+    shift: &ShiftField<D>,
+    spatial: &SliceMetric<D>,
+    extrinsic: &ExtrinsicCurvature<D>,
+    boundary: &BoundaryConfig<D>,
+    boundary_values: &BoundaryValues<D>,
+) -> Field<Tensor2<D>, D> {
+    extrinsic_curvature_rhs_with_matter(
+        lapse,
+        shift,
+        spatial,
+        extrinsic,
+        &MatterSources::vacuum(&spatial.grid),
+        boundary,
+        boundary_values,
+    )
 }

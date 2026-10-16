@@ -10,10 +10,11 @@ use crate::geometry::tensor::{Tensor2, Vector};
 use crate::grid::boundary::{apply_nonperiodic, BoundaryConfig, BoundaryValues};
 use crate::grid::{Field, Grid};
 use crate::relativity::evolution::{
-    extrinsic_curvature_rhs,
+    extrinsic_curvature_rhs_with_matter,
     spatial_metric_rhs,
 };
 use crate::relativity::gauge;
+use crate::relativity::matter::MatterSources;
 
 #[derive(Debug, Clone)]
 pub struct AdmState<const D: usize> {
@@ -59,8 +60,29 @@ impl<const D: usize> AdmState<D> {
     ///
     /// ∂t α = β^i ∂i α - 2 α K
     /// ∂t β^i = 0
+    ///
+    /// Vacuum specialization: no matter sources.
     pub fn rhs(
         &self,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> Self {
+        self.rhs_with_matter(
+            &MatterSources::vacuum(&self.grid),
+            boundary,
+            boundary_values,
+        )
+    }
+
+    /// Compute d(state)/dt with matter sources feeding the K equation.
+    ///
+    /// Gauge: 1+log slicing for the lapse, frozen shift.
+    ///
+    /// ∂t α = β^i ∂i α - 2 α K
+    /// ∂t β^i = 0
+    pub fn rhs_with_matter(
+        &self,
+        matter: &MatterSources<D>,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> Self {
@@ -73,11 +95,12 @@ impl<const D: usize> AdmState<D> {
             boundary_values,
         );
 
-        let k_rhs = extrinsic_curvature_rhs(
+        let k_rhs = extrinsic_curvature_rhs_with_matter(
             &self.lapse,
             &self.shift,
             &self.gamma,
             &self.k,
+            matter,
             boundary,
             boundary_values,
         );
@@ -156,10 +179,26 @@ impl<const D: usize> AdmState<D> {
         out
     }
 
-    /// Advance the full state by one RK4 timestep.
+    /// Advance the full state by one RK4 timestep (vacuum).
     pub fn step_rk4(
         &self,
         dt: f64,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> Self {
+        self.step_rk4_with_matter(
+            dt,
+            &MatterSources::vacuum(&self.grid),
+            boundary,
+            boundary_values,
+        )
+    }
+
+    /// Advance the full state by one RK4 timestep with matter sources.
+    pub fn step_rk4_with_matter(
+        &self,
+        dt: f64,
+        matter: &MatterSources<D>,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> Self {
@@ -171,28 +210,28 @@ impl<const D: usize> AdmState<D> {
         y0.enforce_boundaries(boundary, boundary_values);
 
         // k1 = F(Y_n)
-        let k1 = y0.rhs(boundary, boundary_values);
+        let k1 = y0.rhs_with_matter(matter, boundary, boundary_values);
 
         // k2 = F(Y_n + dt/2 * k1)
         let mut y2 = y0.axpy(0.5 * dt, &k1);
 
         y2.enforce_boundaries(boundary, boundary_values);
 
-        let k2 = y2.rhs(boundary, boundary_values);
+        let k2 = y2.rhs_with_matter(matter, boundary, boundary_values);
 
         // k3 = F(Y_n + dt/2 * k2)
         let mut y3 = y0.axpy(0.5 * dt, &k2);
 
         y3.enforce_boundaries(boundary, boundary_values);
 
-        let k3 = y3.rhs(boundary, boundary_values);
+        let k3 = y3.rhs_with_matter(matter, boundary, boundary_values);
 
         // k4 = F(Y_n + dt * k3)
         let mut y4 = y0.axpy(dt, &k3);
 
         y4.enforce_boundaries(boundary, boundary_values);
 
-        let k4 = y4.rhs(boundary, boundary_values);
+        let k4 = y4.rhs_with_matter(matter, boundary, boundary_values);
 
         // Y_{n+1}
         let mut next = y0;

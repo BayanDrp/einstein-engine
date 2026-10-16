@@ -1,5 +1,9 @@
-use crate::geometry::tensor::{Tensor2, Vector};
-use crate::grid::Field;
+use std::sync::Arc;
+
+use crate::geometry::metric::{LapseField, ShiftField, SliceMetric};
+use crate::geometry::tensor::{invert, Tensor2, Vector};
+use crate::grid::{Field, Grid};
+use crate::physics::stress_energy::StressEnergyField;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FourVelocityError {
@@ -128,5 +132,120 @@ pub fn four_velocity_covariant_field<const D: usize>(
     match err {
         Some(e) => Err(e),
         None => Ok((u_0, u_cov)),
+    }
+}
+
+/// 3+1 matter sources: the projections of T_mu_nu that the constraints and
+/// evolution equations consume.
+///
+/// E / rho: energy density measured by Eulerian observers; enters H.
+/// S^i: contravariant momentum density; enters M^i directly.
+/// S_ij: spatial stress; enters the K / A-tilde evolution.
+/// S: stress trace gamma^ij S_ij; enters d_t K.
+#[derive(Debug, Clone)]
+pub struct MatterSources<const D: usize> {
+    pub rho: Field<f64, D>,
+    pub momentum: Field<Vector<D>, D>,
+    pub stress: Field<Tensor2<D>, D>,
+    pub stress_trace: Field<f64, D>,
+}
+
+impl<const D: usize> MatterSources<D> {
+    /// Vacuum (identically zero) sources on the given grid: every evolution
+    /// equation below reduces to its vacuum form exactly.
+    pub fn vacuum(grid: &Arc<Grid<D>>) -> Self {
+        Self {
+            rho: Field::new(grid.clone(), 0.0),
+            momentum: Field::new(grid.clone(), Vector::zero()),
+            stress: Field::new(grid.clone(), Tensor2::zero()),
+            stress_trace: Field::new(grid.clone(), 0.0),
+        }
+    }
+}
+
+/// Project T_mu_nu onto the slice (c = 1, -+++ signature):
+///
+///   rho = (T_00 - 2 beta^i T_0i + beta^i beta^j T_ij) / alpha^2
+///   s_i = -(T_0i - beta^j T_ij) / alpha
+///   S^i = gamma^ij s_j
+///   S_ij = T_ij
+///   S = gamma^ij S_ij
+pub fn matter_sources<const N: usize, const D: usize>(
+    stress_energy: &StressEnergyField<N, D>,
+    lapse: &LapseField<D>,
+    shift: &ShiftField<D>,
+    spatial: &SliceMetric<D>,
+) -> MatterSources<D> {
+    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert_eq!(lapse.grid.shape, spatial.grid.shape);
+    assert_eq!(shift.grid.shape, spatial.grid.shape);
+    assert_eq!(stress_energy.grid.shape, spatial.grid.shape);
+
+    let mut rho = Field::new(spatial.grid.clone(), 0.0);
+    let mut momentum = Field::new(spatial.grid.clone(), Vector::zero());
+    let mut stress = Field::new(spatial.grid.clone(), Tensor2::zero());
+    let mut stress_trace = Field::new(spatial.grid.clone(), 0.0);
+
+    spatial.grid.for_each_index(|idx| {
+        let t = stress_energy.get(idx);
+        let alpha = *lapse.get(idx);
+        let beta = *shift.get(idx);
+        let gamma = *spatial.get(idx);
+
+        let mut gmat = [[0.0f64; D]; D];
+        for i in 0..D {
+            for j in 0..D {
+                gmat[i][j] = gamma[(i, j)];
+            }
+        }
+        let ginv = invert(&gmat);
+
+        // E: rho = (T_00 - 2 b^i T_0i + b^i b^j T_ij) / a^2
+        let mut r = t.data[0][0];
+        for i in 0..D {
+            r -= 2.0 * beta[i] * t.data[0][i + 1];
+        }
+        for i in 0..D {
+            for j in 0..D {
+                r += beta[i] * beta[j] * t.data[i + 1][j + 1];
+            }
+        }
+        rho.set(idx, r / (alpha * alpha));
+
+        // s_i = -(T_0i - b^j T_ij) / a, then S^i = g^ij s_j
+        let mut s_cov = [0.0f64; D];
+        for i in 0..D {
+            let mut s = t.data[0][i + 1];
+            for j in 0..D {
+                s -= beta[j] * t.data[i + 1][j + 1];
+            }
+            s_cov[i] = -s / alpha;
+        }
+        let mut mom = Vector::<D>::zero();
+        for i in 0..D {
+            for j in 0..D {
+                mom[i] += ginv[i][j] * s_cov[j];
+            }
+        }
+        momentum.set(idx, mom);
+
+        // S_ij = T_ij, S = g^ij S_ij
+        let mut sij = Tensor2::<D>::zero();
+        let mut tr = 0.0;
+        for i in 0..D {
+            for j in 0..D {
+                sij[(i, j)] = t.data[i + 1][j + 1];
+                tr += ginv[i][j] * t.data[i + 1][j + 1];
+            }
+        }
+        stress.set(idx, sij);
+        stress_trace.set(idx, tr);
+    });
+
+    MatterSources {
+        rho,
+        momentum,
+        stress,
+        stress_trace,
     }
 }

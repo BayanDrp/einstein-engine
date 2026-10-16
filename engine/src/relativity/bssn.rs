@@ -1,4 +1,5 @@
 
+use std::f64::consts::PI;
 use std::sync::Arc;
 
 use crate::geometry::christoffel::spatial_christoffel_symbols;
@@ -13,6 +14,7 @@ use crate::grid::boundary::{apply_nonperiodic, BoundaryConfig, BoundaryValues};
 use crate::grid::{Field, Grid};
 use crate::numerics::derivatives::central_partial;
 use crate::numerics::rk4::AdmState;
+use crate::relativity::matter::MatterSources;
 
 /// copy a slice tensor into plain matrix form for `invert` and `det`
 fn matrix<const D: usize>(t: &Tensor2<D>) -> [[f64; D]; D] {
@@ -432,6 +434,7 @@ impl<const D: usize> BssnState<D> {
     ///   d_t K = -e^{-4 phi} ( gtilde^ij (d_i d_j alpha + 2 d_i phi d_j alpha)
     ///                         - Gamma(n)^i d_i alpha )
     ///           + alpha (A tilde^a_b A tilde^b_a + K^2/3) + beta^i d_i K
+    ///           + 4 pi alpha (rho + s)
     ///
     ///   d_t A tilde_ij = e^{-4 phi} [ -d_i d_j alpha + Gamma^k_ij d_k alpha
     ///                       + 2 (d_i alpha d_j phi + d_j alpha d_i phi)
@@ -439,6 +442,7 @@ impl<const D: usize> BssnState<D> {
     ///           + alpha (K A tilde_ij - 2 A tilde_ik A tilde^k_j)
     ///           + A tilde_ik d_j beta^k + A tilde_jk d_i beta^k
     ///           - (2/3) A tilde_ij d_k beta^k + beta^k d_k A tilde_ij
+    ///           - e^{-4 phi} alpha 8 pi (S_ij - (1/3) gamma_ij s)
     ///
     ///   d_t Gamma^i = -2 A tilde^ij d_j alpha
     ///           + 2 alpha (Gamma^i_jk A tilde^jk - (2/3) gtilde^ij d_j K
@@ -446,14 +450,31 @@ impl<const D: usize> BssnState<D> {
     ///           + gtilde^jk d_j d_k beta^i + (1/3) gtilde^ij d_j d_k beta^k
     ///           - Gamma(n)^j d_j beta^i + (2/3) Gamma(n)^i d_j beta^j
     ///           + beta^j d_j Gamma^i
+    ///           - 16 pi alpha gtilde^ij s_j
     ///
     /// Gauge: 1+log slicing for the lapse, frozen shift, exactly as in the
     /// ADM formulation. The "^TF" superscript is the trace-free part with
     /// respect to the conformal metric, and `Gamma(n)^i` is rebuilt from the
     /// current conformal metric while the evolved `Gamma^i` is only ever
-    /// differentiated. Matter terms are omitted.
+    /// differentiated. `rhs` is the vacuum specialization (identically
+    /// zero sources).
+    /// Vacuum specialization: no matter sources. See `rhs_with_matter`.
     pub fn rhs(
         &self,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> BssnState<D> {
+        self.rhs_with_matter(
+            &MatterSources::vacuum(&self.grid),
+            boundary,
+            boundary_values,
+        )
+    }
+
+    /// Right-hand side of the BSSN equations above, with matter sources.
+    pub fn rhs_with_matter(
+        &self,
+        matter: &MatterSources<D>,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> BssnState<D> {
@@ -560,6 +581,10 @@ impl<const D: usize> BssnState<D> {
             let ginvt = invert(&matrix(&gtilde));
             let at = *self.conformal_a.get(idx);
             let trk = *self.trace_k.get(idx);
+            let rho = *matter.rho.get(idx);
+            let s_tr = *matter.stress_trace.get(idx);
+            let sij = *matter.stress.get(idx);
+            let mom = *matter.momentum.get(idx);
             let alpha = *self.lapse.get(idx);
             let beta = *self.shift.get(idx);
             let syms = *gtilde_christoffel.get(idx);
@@ -642,9 +667,13 @@ impl<const D: usize> BssnState<D> {
             for k in 0..D {
                 advect_k += beta[k] * *d_tracek[k].get(idx);
             }
+            // + 4 pi alpha (rho + s): matter sources
             trace_k_rhs.set(
                 idx,
-                -em4 * (lap_alpha - gamma_n_da) + alpha * (aa_trace + trk * trk / 3.0) + advect_k,
+                -em4 * (lap_alpha - gamma_n_da)
+                    + alpha * (aa_trace + trk * trk / 3.0)
+                    + advect_k
+                    + alpha * 4.0 * PI * (rho + s_tr),
             );
 
             // ---- d_t A tilde_ij ------------------------------------------
@@ -680,6 +709,10 @@ impl<const D: usize> BssnState<D> {
                 for j in 0..D {
                     let tf = bracket[i][j] - (1.0 / 3.0) * gtilde[(i, j)] * br_trace;
                     let mut v = em4 * tf + alpha * (trk * at[(i, j)] - 2.0 * at_sq[i][j]);
+                    // -e^{-4 phi} alpha 8 pi (S_ij - (1/3) gamma_ij s),
+                    // gamma_ij = e^{4 phi} gtilde_ij physical
+                    v += -em4 * alpha * 8.0 * PI
+                        * (sij[(i, j)] - e4 * gtilde[(i, j)] * s_tr / 3.0);
                     for k in 0..D {
                         v += at[(i, k)] * *d_beta[j][k].get(idx);
                         v += at[(j, k)] * *d_beta[i][k].get(idx);
@@ -694,6 +727,13 @@ impl<const D: usize> BssnState<D> {
             conformal_a_rhs.set(idx, at_out);
 
             // ---- d_t Gamma^i ---------------------------------------------
+            // s_j = gamma_jk S^k, gamma physical
+            let mut s_cov = [0.0f64; D];
+            for j in 0..D {
+                for k in 0..D {
+                    s_cov[j] += e4 * gtilde[(j, k)] * mom[k];
+                }
+            }
             let mut gamma_rhs = Vector::zero();
             for i in 0..D {
                 let mut v = 0.0;
@@ -729,6 +769,10 @@ impl<const D: usize> BssnState<D> {
                     v += -gamma_n[j] * *d_beta[i][j].get(idx)
                         + (2.0 / 3.0) * gamma_n[i] * *d_beta[j][j].get(idx)
                         + beta[j] * *d_gfn[i][j].get(idx);
+                }
+                // -16 pi alpha gtilde^ij s_j: matter sources
+                for j in 0..D {
+                    v += -16.0 * alpha * PI * ginvt[i][j] * s_cov[j];
                 }
                 gamma_rhs[i] = v;
             }
@@ -819,10 +863,26 @@ impl<const D: usize> BssnState<D> {
         out
     }
 
-    /// Advance the full state by one RK4 timestep.
+    /// Advance the full state by one RK4 timestep (vacuum).
     pub fn step_rk4(
         &self,
         dt: f64,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> Self {
+        self.step_rk4_with_matter(
+            dt,
+            &MatterSources::vacuum(&self.grid),
+            boundary,
+            boundary_values,
+        )
+    }
+
+    /// Advance the full state by one RK4 timestep with matter sources.
+    pub fn step_rk4_with_matter(
+        &self,
+        dt: f64,
+        matter: &MatterSources<D>,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> Self {
@@ -834,22 +894,22 @@ impl<const D: usize> BssnState<D> {
         y0.enforce_boundaries(boundary, boundary_values);
         y0.enforce_constraints();
 
-        let k1 = y0.rhs(boundary, boundary_values);
+        let k1 = y0.rhs_with_matter(matter, boundary, boundary_values);
 
         let mut y2 = y0.axpy(0.5 * dt, &k1);
         y2.enforce_boundaries(boundary, boundary_values);
         y2.enforce_constraints();
-        let k2 = y2.rhs(boundary, boundary_values);
+        let k2 = y2.rhs_with_matter(matter, boundary, boundary_values);
 
         let mut y3 = y0.axpy(0.5 * dt, &k2);
         y3.enforce_boundaries(boundary, boundary_values);
         y3.enforce_constraints();
-        let k3 = y3.rhs(boundary, boundary_values);
+        let k3 = y3.rhs_with_matter(matter, boundary, boundary_values);
 
         let mut y4 = y0.axpy(dt, &k3);
         y4.enforce_boundaries(boundary, boundary_values);
         y4.enforce_constraints();
-        let k4 = y4.rhs(boundary, boundary_values);
+        let k4 = y4.rhs_with_matter(matter, boundary, boundary_values);
 
         let mut next = y0;
         next.add_scaled_in_place(dt / 6.0, &k1);
