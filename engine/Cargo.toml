@@ -88,5 +88,9 @@ name = "unit_initial_data_schwarzschild"
 path = "../tests/initial_data/schwarzschild.rs"
 
 [[test]]
+name = "unit_dust"
+path = "../tests/physics/dust.rs"
+
+[[test]]
 name = "unit_matter"
 path = "../tests/relativity/matter.rs"

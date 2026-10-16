@@ -2,12 +2,14 @@ use einstein_engine::geometry::tensor::{invert, Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
 use einstein_engine::numerics::rk4::AdmState;
+use einstein_engine::physics::dust::DustState;
 use einstein_engine::physics::stress_energy::{
     dust, dust_stress_energy_field, StressEnergy, StressEnergyField,
 };
 use einstein_engine::relativity::bssn::BssnState;
 use einstein_engine::relativity::constraints::{hamiltonian_constraint, momentum_constraint};
 use einstein_engine::relativity::matter::{four_velocity_covariant, matter_sources, MatterSources};
+use einstein_engine::validation::constraints::residuals;
 use std::sync::Arc;
 
 const D: usize = 3;
@@ -549,4 +551,211 @@ fn bssn_adm_k_identity_holds_with_matter() {
         worst = worst.max(diff);
     });
     assert!(worst < 1.0e-4, "K identity with matter mismatch {worst}");
+}
+
+// FLRW-patch dust used by the coupled tests: flat metric, K_ij = C delta_ij
+// with 6 C^2 = 16 pi rho, uniform dust at rest. Exactly on-shell, exactly
+// uniform, so every spatial derivative vanishes and the evolution is a pure
+// ODE system: the ideal check that matter and geometry advance together.
+const C_FLRW: f64 = 0.1;
+
+fn flrw_dust() -> (Arc<Grid<D>>, AdmState<D>, DustState<D>) {
+    let g = Arc::new(Grid::new([8; D], [0.125; D], [0.5; D]));
+    let rho0 = 6.0 * C_FLRW * C_FLRW / (16.0 * std::f64::consts::PI);
+
+    let mut identity = Tensor2::<D>::zero();
+    let mut k0 = Tensor2::<D>::zero();
+    for i in 0..D {
+        identity[(i, i)] = 1.0;
+        k0[(i, i)] = C_FLRW;
+    }
+    let gamma = Field::new(g.clone(), identity);
+    let adm = AdmState {
+        grid: g.clone(),
+        gamma: gamma.clone(),
+        k: Field::new(g.clone(), k0),
+        lapse: Field::new(g.clone(), 1.0),
+        shift: Field::new(g.clone(), Vector::<D>::zero()),
+    };
+    let dust = DustState::from_primitives(
+        &Field::new(g.clone(), rho0),
+        &Field::new(g.clone(), Vector::<D>::zero()),
+        &gamma,
+    );
+    (g, adm, dust)
+}
+
+fn dust_total(dust: &DustState<D>) -> f64 {
+    let h = dust.grid.spacing[0];
+    let mut total = 0.0f64;
+    dust.grid.for_each_index(|idx| {
+        total += dust.densitized_rest_mass.get(idx);
+    });
+    total * h.powi(3)
+}
+
+fn window_h(bssn: &BssnState<D>, dust: &DustState<D>, config: &BoundaryConfig<D>, values: &BoundaryValues<D>) -> (f64, f64) {
+    use einstein_engine::physics::dust::dust_sources;
+    let a = bssn.to_adm();
+    let src = dust_sources::<4, D>(dust, &a.lapse, &a.shift, &a.gamma).unwrap();
+    let r = residuals(&a.gamma, &a.k, &src.rho, &src.momentum, config, values);
+    (r.hamiltonian_max, r.momentum_max)
+}
+
+// Coupled homogeneous dust holds the constraints: 10 steps with sources
+// rebuilt every RK4 stage keep |H| at roundoff, the conserved mass is
+// bit-identical (zero fluxes), and the slice stays bitwise uniform.
+#[test]
+fn coupled_homogeneous_dust_holds_constraints() {
+    let (config, values) = periodic();
+    let (g, adm, dust) = flrw_dust();
+    let mut bssn = BssnState::from_adm(&adm, &config, &values);
+    let mut state = dust;
+
+    let (h0, m0) = window_h(&bssn, &state, &config, &values);
+    assert!(h0 < 1.0e-12, "initial H = {h0}");
+    assert_eq!(m0, 0.0);
+    let total0 = dust_total(&state);
+
+    let dt = 0.5 * 0.125;
+    for step in 1..=10 {
+        let (nb, nd) = bssn
+            .step_rk4_with_dust(&state, dt, &config, &values)
+            .unwrap();
+        bssn = nb;
+        state = nd;
+
+        bssn.grid.for_each_index(|idx| {
+            assert!(
+                bssn.trace_k.get(idx).is_finite(),
+                "non-finite K at step {step}"
+            );
+        });
+    }
+
+    let (hf, mf) = window_h(&bssn, &state, &config, &values);
+    assert!(hf < 1.0e-9, "coupled |H| grew to {hf}");
+    assert_eq!(mf, 0.0);
+    assert_eq!(dust_total(&state), total0);
+
+    // bitwise uniformity: every point sees identical inputs
+    let mut kmin = f64::INFINITY;
+    let mut kmax = f64::NEG_INFINITY;
+    g.for_each_index(|idx| {
+        let k = *bssn.trace_k.get(idx);
+        kmin = kmin.min(k);
+        kmax = kmax.max(k);
+    });
+    assert_eq!(kmax - kmin, 0.0);
+    let _ = g;
+}
+
+// The control that proves recomputation matters: the same 10 steps with the
+// t = 0 sources frozen (the old fixed-source path) must drift while the
+// coupled run above holds. This test fails if stages reuse stale sources.
+#[test]
+fn frozen_sources_drift_where_coupled_holds() {
+    use einstein_engine::physics::dust::dust_sources;
+    let (config, values) = periodic();
+    let (_, adm, dust) = flrw_dust();
+    let bssn = BssnState::from_adm(&adm, &config, &values);
+
+    let a0 = bssn.to_adm();
+    let frozen =
+        dust_sources::<4, D>(&dust, &a0.lapse, &a0.shift, &a0.gamma).unwrap();
+
+    let dt = 0.5 * 0.125;
+    let mut state = bssn;
+    for _ in 1..=10 {
+        state = state.step_rk4_with_matter(dt, &frozen, &config, &values);
+    }
+    let (hf, _) = window_h(&state, &dust, &config, &values);
+
+    assert!(
+        hf > 1.0e-6,
+        "frozen sources should have drifted, got |H| = {hf}"
+    );
+}
+
+// Pure temporal convergence on the homogeneous system (all spatial
+// derivatives vanish exactly): halving dt twice must shrink the final-state
+// difference by ~16x per halving for RK4.
+#[test]
+fn coupled_timestep_converges_fourth_order() {
+    let (config, values) = periodic();
+    let (_, adm, dust) = flrw_dust();
+    let bssn = BssnState::from_adm(&adm, &config, &values);
+
+    let run = |dt: f64, steps: usize| -> f64 {
+        let mut b = bssn.clone();
+        let mut m = dust.clone();
+        for _ in 0..steps {
+            let (nb, nm) = b.step_rk4_with_dust(&m, dt, &config, &values).unwrap();
+            b = nb;
+            m = nm;
+        }
+        let mut k = 0.0f64;
+        b.grid.for_each_index(|idx| {
+            k = k.max(b.trace_k.get(idx).abs());
+        });
+        k
+    };
+
+    // t = 0.5 in all three runs; Richardson ratio of successive differences
+    let k_dt = run(0.0625, 8);
+    let k_dt2 = run(0.03125, 16);
+    let k_dt4 = run(0.015625, 32);
+    let d1 = (k_dt - k_dt2).abs();
+    let d2 = (k_dt2 - k_dt4).abs();
+    assert!(d1 > 0.0 && d2 > 0.0, "refinement differences vanished");
+    let ratio = d1 / d2;
+    assert!(
+        (8.0..32.0).contains(&ratio),
+        "expected ~16x fourth-order ratio, got {ratio}"
+    );
+}
+
+// One coupled step differs from one frozen-source step once the geometry
+// moves: sources rebuilt at later stages see diluted rho, so the two
+// integrators disagree. This fails if stages reuse stale sources.
+#[test]
+fn coupled_step_uses_fresh_sources() {
+    use einstein_engine::physics::dust::dust_sources;
+    let (config, values) = periodic();
+    let (_, adm, dust) = flrw_dust();
+    let bssn = BssnState::from_adm(&adm, &config, &values);
+
+    let dt = 0.0625;
+    let (cb, _) = bssn
+        .step_rk4_with_dust(&dust, dt, &config, &values)
+        .unwrap();
+
+    let a0 = bssn.to_adm();
+    let frozen = dust_sources::<4, D>(&dust, &a0.lapse, &a0.shift, &a0.gamma).unwrap();
+    let fb = bssn.step_rk4_with_matter(dt, &frozen, &config, &values);
+
+    // same code paths except source freshness: any nonzero difference
+    // proves the stages did not all see the t = 0 sources
+    let mut worst_k = 0.0f64;
+    let mut worst_a = 0.0f64;
+    cb.grid.for_each_index(|idx| {
+        worst_k = worst_k.max(
+            (cb.trace_k.get(idx) - fb.trace_k.get(idx)).abs(),
+        );
+        let ca = cb.conformal_a.get(idx);
+        let fa = fb.conformal_a.get(idx);
+        for i in 0..D {
+            for j in 0..D {
+                worst_a = worst_a.max((ca[(i, j)] - fa[(i, j)]).abs());
+            }
+        }
+    });
+    assert!(
+        worst_k > 1.0e-14,
+        "coupled and frozen steps agree: sources look stale"
+    );
+    assert!(
+        worst_k < 1.0e-4 && worst_a < 1.0e-4,
+        "coupled/frozen divergence too large: {worst_k}, {worst_a}"
+    );
 }

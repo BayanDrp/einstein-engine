@@ -14,7 +14,9 @@ use crate::grid::boundary::{apply_nonperiodic, BoundaryConfig, BoundaryValues};
 use crate::grid::{Field, Grid};
 use crate::numerics::derivatives::central_partial;
 use crate::numerics::rk4::AdmState;
-use crate::relativity::matter::MatterSources;
+use crate::physics::dust::{dust_sources, DustState};
+use crate::physics::dust_evolution::dust_rhs;
+use crate::relativity::matter::{FourVelocityError, MatterSources};
 
 /// copy a slice tensor into plain matrix form for `invert` and `det`
 fn matrix<const D: usize>(t: &Tensor2<D>) -> [[f64; D]; D] {
@@ -919,6 +921,80 @@ impl<const D: usize> BssnState<D> {
         next.enforce_boundaries(boundary, boundary_values);
         next.enforce_constraints();
         next
+    }
+
+    /// Advance geometry and dust together by one RK4 timestep.
+    ///
+    /// Every stage rebuilds the matter sources from the intermediate dust
+    /// and geometry states, so neither system ever sees the other's stale
+    /// values. Dust evolution itself lives in `physics::dust_evolution`.
+    pub fn step_rk4_with_dust(
+        &self,
+        dust: &DustState<D>,
+        dt: f64,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> Result<(Self, DustState<D>), FourVelocityError> {
+        assert!(D == 3, "the BSSN equations are implemented for 3+1 only");
+        assert!(dt.is_finite() && dt > 0.0);
+
+        let mut y0 = self.clone();
+        y0.enforce_boundaries(boundary, boundary_values);
+        y0.enforce_constraints();
+        let m0 = dust.clone();
+
+        // k1 = F(Y_n)
+        let a0 = y0.to_adm();
+        let s1 = dust_sources::<4, D>(&m0, &a0.lapse, &a0.shift, &a0.gamma)?;
+        let k1g = y0.rhs_with_matter(&s1, boundary, boundary_values);
+        let k1m = dust_rhs(&m0, &a0.lapse, &a0.shift, &a0.gamma, boundary, boundary_values);
+
+        // k2 = F(Y_n + dt/2 * k1)
+        let mut y2 = y0.axpy(0.5 * dt, &k1g);
+        let m2 = m0.axpy(0.5 * dt, &k1m);
+        y2.enforce_boundaries(boundary, boundary_values);
+        y2.enforce_constraints();
+        let a2 = y2.to_adm();
+        let s2 = dust_sources::<4, D>(&m2, &a2.lapse, &a2.shift, &a2.gamma)?;
+        let k2g = y2.rhs_with_matter(&s2, boundary, boundary_values);
+        let k2m = dust_rhs(&m2, &a2.lapse, &a2.shift, &a2.gamma, boundary, boundary_values);
+
+        // k3 = F(Y_n + dt/2 * k2)
+        let mut y3 = y0.axpy(0.5 * dt, &k2g);
+        let m3 = m0.axpy(0.5 * dt, &k2m);
+        y3.enforce_boundaries(boundary, boundary_values);
+        y3.enforce_constraints();
+        let a3 = y3.to_adm();
+        let s3 = dust_sources::<4, D>(&m3, &a3.lapse, &a3.shift, &a3.gamma)?;
+        let k3g = y3.rhs_with_matter(&s3, boundary, boundary_values);
+        let k3m = dust_rhs(&m3, &a3.lapse, &a3.shift, &a3.gamma, boundary, boundary_values);
+
+        // k4 = F(Y_n + dt * k3)
+        let mut y4 = y0.axpy(dt, &k3g);
+        let m4 = m0.axpy(dt, &k3m);
+        y4.enforce_boundaries(boundary, boundary_values);
+        y4.enforce_constraints();
+        let a4 = y4.to_adm();
+        let s4 = dust_sources::<4, D>(&m4, &a4.lapse, &a4.shift, &a4.gamma)?;
+        let k4g = y4.rhs_with_matter(&s4, boundary, boundary_values);
+        let k4m = dust_rhs(&m4, &a4.lapse, &a4.shift, &a4.gamma, boundary, boundary_values);
+
+        // Y_{n+1}
+        let mut next = y0;
+        next.add_scaled_in_place(dt / 6.0, &k1g);
+        next.add_scaled_in_place(dt / 3.0, &k2g);
+        next.add_scaled_in_place(dt / 3.0, &k3g);
+        next.add_scaled_in_place(dt / 6.0, &k4g);
+        next.enforce_boundaries(boundary, boundary_values);
+        next.enforce_constraints();
+
+        let mut next_m = m0;
+        next_m.add_scaled_in_place(dt / 6.0, &k1m);
+        next_m.add_scaled_in_place(dt / 3.0, &k2m);
+        next_m.add_scaled_in_place(dt / 3.0, &k3m);
+        next_m.add_scaled_in_place(dt / 6.0, &k4m);
+
+        Ok((next, next_m))
     }
 
     fn add_scaled_in_place(&mut self, a: f64, rhs: &Self) {
