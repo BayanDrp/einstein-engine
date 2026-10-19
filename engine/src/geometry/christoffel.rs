@@ -1,4 +1,12 @@
-use super::metric::{LapseField, ShiftField, SliceMetric, SpacetimeMetric};
+use std::sync::Arc;
+
+use super::metric::{
+    temporal_metric_derivative,
+    LapseField,
+    ShiftField,
+    SliceMetric,
+    SpacetimeMetric,
+};
 use super::tensor::{invert, Tensor2, Vector};
 use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::grid::Field;
@@ -56,6 +64,11 @@ fn spatial_component<const D: usize>(
 /// differences off the lapse, shift and spatial metric fields.
 /// D is the number of spatial dimensions, N = D + 1 is the number
 /// of spacetime dimensions; call as christoffel_symbols::<D, N>.
+///
+/// This is the static-background constructor: d_0 g_ab is hardcoded to
+/// zero. For a genuinely evolving slice use
+/// [`christoffel_symbols_with_time_derivatives`], which feeds the time
+/// derivatives of the 3+1 variables into the same assembly.
 pub fn christoffel_symbols<const D: usize, const N: usize>(
     lapse: &LapseField<D>,
     shift: &ShiftField<D>,
@@ -63,7 +76,69 @@ pub fn christoffel_symbols<const D: usize, const N: usize>(
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> ChristoffelField<N, D> {
+    christoffel_symbols_inner(lapse, shift, spatial, None, boundary, boundary_values)
+}
+
+/// Christoffel symbols of a genuinely time-dependent metric: the time
+/// derivative d_t g_ab (index 0) is no longer assumed zero but assembled
+/// pointwise from the time derivatives of the 3+1 variables:
+///
+///   dgamma_dt: field of d_t gamma_ij, the spatial ADM right-hand side
+///              (-2 alpha K_ij + L_beta gamma_ij, i.e. `spatial_metric_rhs`),
+///   dshift_dt: field of d_t beta^i,
+///   dlapse_dt: field of d_t alpha.
+///
+/// All three must live on the same grid as the lapse; pointer equality is
+/// asserted. The spatial derivatives, the metric inversion and the Gamma
+/// assembly are identical to `christoffel_symbols`, so all-zero
+/// derivative fields reproduce that function exactly.
+pub fn christoffel_symbols_with_time_derivatives<const D: usize, const N: usize>(
+    lapse: &LapseField<D>,
+    shift: &ShiftField<D>,
+    spatial: &SliceMetric<D>,
+    dgamma_dt: &Field<Tensor2<D>, D>,
+    dshift_dt: &Field<Vector<D>, D>,
+    dlapse_dt: &Field<f64, D>,
+    boundary: &BoundaryConfig<D>,
+    boundary_values: &BoundaryValues<D>,
+) -> ChristoffelField<N, D> {
+    christoffel_symbols_inner(
+        lapse,
+        shift,
+        spatial,
+        Some((dgamma_dt, dshift_dt, dlapse_dt)),
+        boundary,
+        boundary_values,
+    )
+}
+
+/// shared assembly behind the two public constructors. `temporal` carries
+/// the time derivatives of the 3+1 variables; `None` means a static
+/// background whose d_t g_ab vanishes.
+fn christoffel_symbols_inner<const D: usize, const N: usize>(
+    lapse: &LapseField<D>,
+    shift: &ShiftField<D>,
+    spatial: &SliceMetric<D>,
+    temporal: Option<(&Field<Tensor2<D>, D>, &Field<Vector<D>, D>, &Field<f64, D>)>,
+    boundary: &BoundaryConfig<D>,
+    boundary_values: &BoundaryValues<D>,
+) -> ChristoffelField<N, D> {
     assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+
+    if let Some((dgamma_dt, dshift_dt, dlapse_dt)) = temporal {
+        assert!(
+            Arc::ptr_eq(&lapse.grid, &dgamma_dt.grid),
+            "dgamma_dt must live on the same grid as the lapse"
+        );
+        assert!(
+            Arc::ptr_eq(&lapse.grid, &dshift_dt.grid),
+            "dshift_dt must live on the same grid as the lapse"
+        );
+        assert!(
+            Arc::ptr_eq(&lapse.grid, &dlapse_dt.grid),
+            "dlapse_dt must live on the same grid as the lapse"
+        );
+    }
 
     // first derivatives d/dx^k of each metric variable
     let dalpha: Vec<Field<f64, D>> = (0..D)
@@ -105,8 +180,20 @@ pub fn christoffel_symbols<const D: usize, const N: usize>(
         // the spacetime metric g_ab, assembled by the metric module
         let g = SpacetimeMetric::from_3plus1(alpha, beta, gamma).as_matrix::<N>();
 
-        // derivatives of g_ab; index 0 is time and stays zero
+        // derivatives of g_ab; index 0 is time and stays zero for a
+        // static background, or is filled from the supplied time
+        // derivatives of the 3+1 variables
         dg_list[0] = [[0.0f64; N]; N];
+        if let Some((dgamma_dt, dshift_dt, dlapse_dt)) = temporal {
+            dg_list[0] = temporal_metric_derivative::<D, N>(
+                alpha,
+                beta,
+                gamma,
+                dgamma_dt.get(idx),
+                dshift_dt.get(idx),
+                *dlapse_dt.get(idx),
+            );
+        }
         for k in 0..D {
             let d_alpha = *dalpha[k].get(idx);
             // d/dx^k of the lower shift: gamma_mj d beta^j + d gamma_mj beta^j

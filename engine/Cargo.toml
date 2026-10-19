@@ -24,6 +24,10 @@ name = "unit_derivatives"
 path = "../tests/numerics/derivatives.rs"
 
 [[test]]
+name = "unit_interpolation"
+path = "../tests/numerics/interpolation.rs"
+
+[[test]]
 name = "unit_christoffel"
 path = "../tests/geometry/christoffel.rs"
 
@@ -92,5 +96,37 @@ name = "unit_dust"
 path = "../tests/physics/dust.rs"
 
 [[test]]
+name = "unit_geodesics"
+path = "../tests/physics/geodesics.rs"
+
+[[test]]
+name = "unit_particles"
+path = "../tests/physics/particles.rs"
+
+[[test]]
 name = "unit_matter"
 path = "../tests/relativity/matter.rs"
+
+[[test]]
+name = "unit_rk4_stages"
+path = "../tests/numerics/rk4_stages.rs"
+
+[[test]]
+name = "unit_christoffel_time"
+path = "../tests/geometry/christoffel_time.rs"
+
+[[test]]
+name = "unit_geodesics_time"
+path = "../tests/physics/geodesics_time.rs"
+
+[[test]]
+name = "unit_bssn_geodesics"
+path = "../tests/relativity/bssn_geodesics.rs"
+
+[[test]]
+name = "unit_orbits"
+path = "../tests/physics/orbits.rs"
+
+[[test]]
+name = "unit_coupled_matter"
+path = "../tests/physics/coupled_matter.rs"

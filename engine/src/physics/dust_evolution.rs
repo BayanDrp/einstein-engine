@@ -200,8 +200,9 @@ pub fn dust_rhs<const D: usize>(
 
 /// Advance dust alone by one RK4 timestep with frozen geometry.
 ///
-/// Used for transport tests; the coupled BSSN stepper is what advances
-/// matter together with the geometry.
+/// Used for transport tests; the coupled steppers (`BssnState::
+/// step_rk4_with_dust_stages`, `AdmState::step_rk4_with_dust_stages`) are
+/// what advance matter together with the geometry.
 pub fn dust_step_rk4<const D: usize>(
     state: &DustState<D>,
     dt: f64,
@@ -229,4 +230,42 @@ pub fn dust_step_rk4<const D: usize>(
     next.add_scaled_in_place(dt / 3.0, &k3);
     next.add_scaled_in_place(dt / 6.0, &k4);
     next
+}
+
+/// The dust stage data of one coupled geometry+dust RK4 step: the initial
+/// state m0, the three intermediate states (m2 at dt/2 from k1, m3 at dt/2
+/// from k2, m4 at dt from k3) and the four rates, each already carrying the
+/// per-stage geometry sources used by the coupled stepper that built it.
+///
+/// Mirrors the geometry stage structs (`AdmRk4Stages`, `BssnRk4Stages`)
+/// stage for stage, so coupling consumers can hold both halves of one
+/// step and commit matter and geometry in a consistent order.
+#[derive(Debug, Clone)]
+pub struct DustRk4Stages<const D: usize> {
+    pub dt: f64,
+    pub m0: DustState<D>,
+    pub m2: DustState<D>,
+    pub m3: DustState<D>,
+    pub m4: DustState<D>,
+    pub k1: DustState<D>,
+    pub k2: DustState<D>,
+    pub k3: DustState<D>,
+    pub k4: DustState<D>,
+}
+
+impl<const D: usize> DustRk4Stages<D> {
+    /// Collapse the stage data into M_{n+1} = m0 + dt/6 k1 + dt/3 k2 +
+    /// dt/3 k3 + dt/6 k4. Reproduces exactly the returned dust state of
+    /// the classic coupled steppers on the same stage data -- the same
+    /// sequential accumulation in the same order, with no enforcement
+    /// step (the dust variables are conserved densities, not BSSN
+    /// variables with algebraic constraints).
+    pub fn collapse(&self) -> DustState<D> {
+        let mut next = self.m0.clone();
+        next.add_scaled_in_place(self.dt / 6.0, &self.k1);
+        next.add_scaled_in_place(self.dt / 3.0, &self.k2);
+        next.add_scaled_in_place(self.dt / 3.0, &self.k3);
+        next.add_scaled_in_place(self.dt / 6.0, &self.k4);
+        next
+    }
 }

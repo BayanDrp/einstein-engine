@@ -15,7 +15,7 @@ use crate::grid::{Field, Grid};
 use crate::numerics::derivatives::central_partial;
 use crate::numerics::rk4::AdmState;
 use crate::physics::dust::{dust_sources, DustState};
-use crate::physics::dust_evolution::dust_rhs;
+use crate::physics::dust_evolution::{dust_rhs, DustRk4Stages};
 use crate::relativity::matter::{FourVelocityError, MatterSources};
 
 /// copy a slice tensor into plain matrix form for `invert` and `det`
@@ -880,14 +880,39 @@ impl<const D: usize> BssnState<D> {
         )
     }
 
-    /// Advance the full state by one RK4 timestep with matter sources.
-    pub fn step_rk4_with_matter(
+    /// Advance the full state by one RK4 timestep (vacuum), returning the
+    /// stage data instead of the collapsed next state.
+    pub fn step_rk4_stages(
+        &self,
+        dt: f64,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> BssnRk4Stages<D> {
+        self.step_rk4_with_matter_stages(
+            dt,
+            &MatterSources::vacuum(&self.grid),
+            boundary,
+            boundary_values,
+        )
+    }
+
+    /// Advance the full state by one RK4 timestep with matter sources,
+    /// returning the stage data instead of the collapsed next state.
+    ///
+    /// The stage sequence is identical to `step_rk4_with_matter`: y0 is
+    /// boundary- and constraint-enforced before its rate is taken, every
+    /// intermediate stage is re-enforced before it is advanced from, and
+    /// the classic RK4 combination is assembled from (y0, k1..k4). This
+    /// exists so geodesic couplings can sample the BSSN stage states and
+    /// BSSN right-hand sides the integrator really stepped through (see
+    /// [`stage_physical_adm`]), at stage times 0, dt/2, dt/2, dt.
+    pub fn step_rk4_with_matter_stages(
         &self,
         dt: f64,
         matter: &MatterSources<D>,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
-    ) -> Self {
+    ) -> BssnRk4Stages<D> {
         assert!(dt.is_finite() && dt > 0.0);
 
         // as in AdmState: start from boundary-compliant data, re-impose
@@ -913,28 +938,51 @@ impl<const D: usize> BssnState<D> {
         y4.enforce_constraints();
         let k4 = y4.rhs_with_matter(matter, boundary, boundary_values);
 
-        let mut next = y0;
-        next.add_scaled_in_place(dt / 6.0, &k1);
-        next.add_scaled_in_place(dt / 3.0, &k2);
-        next.add_scaled_in_place(dt / 3.0, &k3);
-        next.add_scaled_in_place(dt / 6.0, &k4);
-        next.enforce_boundaries(boundary, boundary_values);
-        next.enforce_constraints();
-        next
+        BssnRk4Stages {
+            dt,
+            y0,
+            y2,
+            y3,
+            y4,
+            k1,
+            k2,
+            k3,
+            k4,
+        }
     }
 
-    /// Advance geometry and dust together by one RK4 timestep.
+    /// Advance the full state by one RK4 timestep with matter sources.
+    pub fn step_rk4_with_matter(
+        &self,
+        dt: f64,
+        matter: &MatterSources<D>,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> Self {
+        self.step_rk4_with_matter_stages(dt, matter, boundary, boundary_values)
+            .collapse(boundary, boundary_values)
+    }
+
+    /// Advance geometry and dust together by one RK4 timestep, exposing
+    /// the stage data instead of the collapsed states.
     ///
     /// Every stage rebuilds the matter sources from the intermediate dust
-    /// and geometry states, so neither system ever sees the other's stale
-    /// values. Dust evolution itself lives in `physics::dust_evolution`.
-    pub fn step_rk4_with_dust(
+    /// state (m_i) and the intermediate geometry (y_i), so neither system
+    /// ever sees the other's stale values, exactly as in
+    /// [`BssnState::step_rk4_with_dust`]. Dust evolution itself lives in
+    /// `physics::dust_evolution`. The return pairs are consistent with
+    /// what RK4 evaluated: geometry stage i pairs (y_i, k_g i), dust
+    /// stage i pairs (m_i, k_m i), and the classic stepper below collapses
+    /// both halves of the same stage set -- so geodesic couplings
+    /// (`bssn_stage_connections`) and matter consumers see one shared,
+    /// stage-consistent step.
+    pub fn step_rk4_with_dust_stages(
         &self,
         dust: &DustState<D>,
         dt: f64,
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
-    ) -> Result<(Self, DustState<D>), FourVelocityError> {
+    ) -> Result<(BssnRk4Stages<D>, DustRk4Stages<D>), FourVelocityError> {
         assert!(D == 3, "the BSSN equations are implemented for 3+1 only");
         assert!(dt.is_finite() && dt > 0.0);
 
@@ -979,22 +1027,59 @@ impl<const D: usize> BssnState<D> {
         let k4g = y4.rhs_with_matter(&s4, boundary, boundary_values);
         let k4m = dust_rhs(&m4, &a4.lapse, &a4.shift, &a4.gamma, boundary, boundary_values);
 
-        // Y_{n+1}
-        let mut next = y0;
-        next.add_scaled_in_place(dt / 6.0, &k1g);
-        next.add_scaled_in_place(dt / 3.0, &k2g);
-        next.add_scaled_in_place(dt / 3.0, &k3g);
-        next.add_scaled_in_place(dt / 6.0, &k4g);
-        next.enforce_boundaries(boundary, boundary_values);
-        next.enforce_constraints();
+        Ok((
+            BssnRk4Stages {
+                dt,
+                y0,
+                y2,
+                y3,
+                y4,
+                k1: k1g,
+                k2: k2g,
+                k3: k3g,
+                k4: k4g,
+            },
+            DustRk4Stages {
+                dt,
+                m0,
+                m2,
+                m3,
+                m4,
+                k1: k1m,
+                k2: k2m,
+                k3: k3m,
+                k4: k4m,
+            },
+        ))
+    }
 
-        let mut next_m = m0;
-        next_m.add_scaled_in_place(dt / 6.0, &k1m);
-        next_m.add_scaled_in_place(dt / 3.0, &k2m);
-        next_m.add_scaled_in_place(dt / 3.0, &k3m);
-        next_m.add_scaled_in_place(dt / 6.0, &k4m);
+    /// Advance geometry and dust together by one RK4 timestep.
+    ///
+    /// The collapse of [`BssnState::step_rk4_with_dust_stages`]: geometry
+    /// via [`BssnRk4Stages::collapse`] (boundary conditions and algebraic
+    /// constraints re-imposed, exactly the sequential accumulation the
+    /// classic stepper always did), dust via [`DustRk4Stages::collapse`]
+    /// (no enforcement -- conserved densities carry no algebraic
+    /// constraints). Bit-for-bit the same numbers as this method always
+    /// produced; the only change is that the stages are now reachable.
+    pub fn step_rk4_with_dust(
+        &self,
+        dust: &DustState<D>,
+        dt: f64,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> Result<(Self, DustState<D>), FourVelocityError> {
+        let (stages, dust_stages) = self.step_rk4_with_dust_stages(
+            dust,
+            dt,
+            boundary,
+            boundary_values,
+        )?;
 
-        Ok((next, next_m))
+        Ok((
+            stages.collapse(boundary, boundary_values),
+            dust_stages.collapse(),
+        ))
     }
 
     fn add_scaled_in_place(&mut self, a: f64, rhs: &Self) {
@@ -1040,4 +1125,100 @@ impl<const D: usize> BssnState<D> {
             self.shift.set(idx, sh);
         });
     }
+}
+
+/// The stage data of one classical RK4 BSSN step: the four stage states
+/// y0, y2 = y0 + dt/2 k1, y3 = y0 + dt/2 k2, y4 = y0 + dt k3 and the
+/// rates k1..k4 evaluated on them (ki is the right-hand side of yi-1 and
+/// of yi for i = 2..4). Boundary conditions and the algebraic BSSN
+/// constraints are re-imposed on y0 and on every intermediate stage,
+/// exactly as inside `step_rk4_with_matter`.
+///
+/// This exists so advection-style couplings (e.g. geodesic test particles)
+/// can sample the same BSSN geometry the integrator saw at each stage
+/// time 0, dt/2, dt/2, dt; see [`stage_physical_adm`] below and
+/// `bssn_stage_connections` in `physics::geodesics` for the coupling.
+pub struct BssnRk4Stages<const D: usize> {
+    pub dt: f64,
+    pub y0: BssnState<D>,
+    pub y2: BssnState<D>,
+    pub y3: BssnState<D>,
+    pub y4: BssnState<D>,
+    pub k1: BssnState<D>,
+    pub k2: BssnState<D>,
+    pub k3: BssnState<D>,
+    pub k4: BssnState<D>,
+}
+
+impl<const D: usize> BssnRk4Stages<D> {
+    /// Collapse the stage data into Y_{n+1} = y0 + dt/6 k1 + dt/3 k2 +
+    /// dt/3 k3 + dt/6 k4, with the boundary conditions and the algebraic
+    /// BSSN constraints re-imposed afterwards. Reproduces exactly the
+    /// return value of `step_rk4_with_matter` on the same inputs.
+    pub fn collapse(
+        &self,
+        boundary: &BoundaryConfig<D>,
+        boundary_values: &BoundaryValues<D>,
+    ) -> BssnState<D> {
+        let mut next = self.y0.clone();
+
+        next.add_scaled_in_place(self.dt / 6.0, &self.k1);
+        next.add_scaled_in_place(self.dt / 3.0, &self.k2);
+        next.add_scaled_in_place(self.dt / 3.0, &self.k3);
+        next.add_scaled_in_place(self.dt / 6.0, &self.k4);
+
+        next.enforce_boundaries(boundary, boundary_values);
+        next.enforce_constraints();
+
+        next
+    }
+}
+
+/// The physical ADM geometry of one BSSN stage pair (y, k), plus the
+/// temporal metric derivatives the time-aware Christoffel constructor
+/// needs, all derived from the engine's own BSSN conformal convention
+///
+///   gamma_ij = exp(4 phi) gtilde_ij.
+///
+/// The product rule gives the spatial metric rate
+///
+///   d_t gamma_ij = exp(4 phi) (4 d_t phi gtilde_ij + d_t gtilde_ij),
+///
+/// where `d_t phi = k.phi` and `d_t gtilde_ij = k.conformal_metric` are
+/// the BSSN right-hand-side fields of the very same stage pair -- never
+/// ADM-rate substitutes. The lapse rate is the BSSN gauge field `k.lapse`
+/// (1+log slicing over the BSSN trace K) and the shift rate is `k.shift`,
+/// which the BSSN gauge freezes to zero exactly like the ADM one. The
+/// returned `AdmState` is the honest physical stage state via `to_adm`:
+/// gamma_ij = exp(4 phi) gtilde_ij and
+/// K_ij = exp(4 phi) A tilde_ij + (1/3) gamma_ij K.
+pub fn stage_physical_adm<const D: usize>(
+    y: &BssnState<D>,
+    k: &BssnState<D>,
+) -> (
+    AdmState<D>,
+    Field<Tensor2<D>, D>,
+    Field<Vector<D>, D>,
+    Field<f64, D>,
+) {
+    let adm = y.to_adm();
+
+    let mut dgamma_dt: Field<Tensor2<D>, D> = Field::new(y.grid.clone(), Tensor2::zero());
+    y.grid.for_each_index(|idx| {
+        let p = *y.phi.get(idx);
+        let e4 = (4.0 * p).exp();
+        let gtilde = *y.conformal_metric.get(idx);
+        let phi_dot = *k.phi.get(idx);
+        let gtilde_dot = *k.conformal_metric.get(idx);
+
+        let mut a = Tensor2::<D>::zero();
+        for i in 0..D {
+            for j in 0..D {
+                a[(i, j)] = e4 * (4.0 * phi_dot * gtilde[(i, j)] + gtilde_dot[(i, j)]);
+            }
+        }
+        dgamma_dt.set(idx, a);
+    });
+
+    (adm, dgamma_dt, k.shift.clone(), k.lapse.clone())
 }
