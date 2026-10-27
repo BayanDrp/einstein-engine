@@ -1,1 +1,12 @@
 /target/
+
+# engine and example run outputs (diagnostics, orbit trajectories)
+engine/*.csv
+
+# manim render output and python caches
+media/
+__pycache__/
+*.py[cod]
+
+# python virtual envs (uv)
+.venv/
