@@ -1,4 +1,4 @@
-from manim import BLUE, GREEN, ORANGE, ORIGIN, PINK, TEAL, Dot3D, Sphere, YELLOW
+from manim import BLUE, GREEN, ORANGE, ORIGIN, PINK, TEAL, Dot3D, Sphere, VGroup, YELLOW
 
 PALETTE = [
     BLUE,
@@ -14,10 +14,10 @@ def _particle(track, index):
     color = track.color or PALETTE[index % len(PALETTE)]
     radius = track.display_size or 0.10
 
-    return Dot3D(
-        point=ORIGIN,
-        radius=radius,
-        color=color,
+    return VGroup(
+        # halo first: drawn behind the core, same color, much fainter
+        Dot3D(point=ORIGIN, radius=radius * 2.5, color=color, fill_opacity=0.2),
+        Dot3D(point=ORIGIN, radius=radius, color=color, fill_opacity=1.0),
     )
 
 
@@ -25,11 +25,10 @@ def _matter(track, index):
     color = track.color or PALETTE[index % len(PALETTE)]
     radius = track.display_size or 0.30
 
-    return Sphere(
-        center=ORIGIN,
-        radius=radius,
-        color=color,
-        fill_opacity=0.7,
+    return VGroup(
+        # glow shell first, then the readable core
+        Sphere(center=ORIGIN, radius=radius * 1.7, color=color, fill_opacity=0.12),
+        Sphere(center=ORIGIN, radius=radius, color=color, fill_opacity=0.85),
     )
 
 BUILDERS = {"particle": _particle, "matter": _matter}

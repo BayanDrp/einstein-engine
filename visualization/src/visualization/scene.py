@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 from manim import (
     DEGREES,
-    UL,
+    DL,
     ThreeDAxes,
     ThreeDScene,
     Text,
@@ -72,19 +72,23 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
     t_end = float(np.max(all_times))
     duration = playback_duration(t_end - t_start)
 
-    class RHexScene(ThreeDScene):
+    class EinsteinEngineScene(ThreeDScene):
         def construct(self):
             self.set_camera_orientation(phi=70 * DEGREES, theta=-45 * DEGREES)
 
+            # furniture, not content: keep orientation cues, drop the clutter
             axes = ThreeDAxes(
                 x_range=(-4.5, 4.5, 1),
                 y_range=(-4.5, 4.5, 1),
                 z_range=(-4.5, 4.5, 1),
+                axis_config={"include_ticks": False, "include_tip": False},
             )
+            axes.set_stroke(opacity=0.35)
             self.add(axes)
 
-            title = Text(f"RHex — {folder.name}", font_size=28)
-            title.to_corner(UL, buff=0.3)
+            title = Text(f"Einstein Engine — {folder.name}", font_size=22)
+            title.set_opacity(0.6)
+            title.to_corner(DL, buff=0.3)
             self.add_fixed_in_frame_mobjects(title)
 
             clock = ValueTracker(t_start)
@@ -95,7 +99,10 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
                 )
                 self.add(body)
                 if trails:
-                    trail = TracedPath(body.get_center, stroke_width=2.0)
+                    # comet trail: history dissolves so motion stays the hero
+                    trail = TracedPath(
+                        body.get_center, stroke_width=3.0, dissipating_time=1.5
+                    )
                     trail.set_stroke(color=body.get_color())
                     self.add(trail)
 
@@ -106,5 +113,5 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
             )
             self.wait(0.5)
 
-    RHexScene.__qualname__ = RHexScene.__name__ = f"RHexScene_{folder.name}_{len(visible)}tracks"
-    return RHexScene
+    EinsteinEngineScene.__qualname__ = EinsteinEngineScene.__name__ = f"EinsteinEngineScene_{folder.name}_{len(visible)}tracks"
+    return EinsteinEngineScene
