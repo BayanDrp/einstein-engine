@@ -8,9 +8,9 @@ the data, this file owns the pixels.
 
 Playback is one single play() of a ValueTracker from the folder's first
 recorded time to its last: every body reads the same clock at every
-rendered frame, so objects stay time-synchronized no matter how
-differently sampled they are (a 3695-sample ISCO ring beside a
-single-sample observer). Bodies whose recording starts later hold their
+rendered frame, so objects stay time synchronized no matter how
+differently sampled they are (a 3695 sample ISCO ring beside a
+single sample observer). Bodies whose recording starts later hold their
 first sample until their data begins (mapping's clamped interpolation).
 """
 
@@ -55,7 +55,9 @@ def playback_duration(span: float) -> float:
     return float(min(_MAX_SECONDS, max(_MIN_SECONDS, span / _SPAN_TO_SECONDS)))
 
 
-def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
+def make_scene(
+    folder: str | Path, trails: bool = True, seconds: float | None = None
+) -> type[ThreeDScene]:
     """Build the Scene class for ``folder``.
 
     Returns the class itself (manim renders it like any scene file);
@@ -78,7 +80,7 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
     all_times = np.concatenate([track.times for track in visible])
     t_start = float(np.min(all_times))
     t_end = float(np.max(all_times))
-    duration = playback_duration(t_end - t_start)
+    duration = seconds if seconds is not None else playback_duration(t_end - t_start)
 
     class EinsteinEngineScene(ThreeDScene):
         def construct(self):
@@ -149,4 +151,5 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
             self.wait(0.5)
 
     EinsteinEngineScene.__qualname__ = EinsteinEngineScene.__name__ = f"EinsteinEngineScene_{folder.name}_{len(visible)}tracks"
+    EinsteinEngineScene.playback_seconds = duration
     return EinsteinEngineScene
