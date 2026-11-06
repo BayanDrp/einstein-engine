@@ -22,11 +22,19 @@ import numpy as np
 from manim import (
     DEGREES,
     DL,
+    Dot,
+    DOWN,
+    DecimalNumber,
+    LEFT,
+    RIGHT,
+    Text,
     ThreeDAxes,
     ThreeDScene,
-    Text,
     TracedPath,
+    UL,
+    UR,
     ValueTracker,
+    VGroup,
     rate_functions,
 )
 
@@ -74,7 +82,7 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
 
     class EinsteinEngineScene(ThreeDScene):
         def construct(self):
-            self.set_camera_orientation(phi=70 * DEGREES, theta=-45 * DEGREES)
+            self.set_camera_orientation(phi=70 * DEGREES, theta=-35 * DEGREES)
 
             # furniture, not content: keep orientation cues, drop the clutter
             axes = ThreeDAxes(
@@ -92,6 +100,7 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
             self.add_fixed_in_frame_mobjects(title)
 
             clock = ValueTracker(t_start)
+            bodies = []
             for index, track in enumerate(visible):
                 body = track_mobject(track, index)
                 body.add_updater(
@@ -99,18 +108,44 @@ def make_scene(folder: str | Path, trails: bool = True) -> type[ThreeDScene]:
                 )
                 self.add(body)
                 if trails:
-                    # comet trail: history dissolves so motion stays the hero
+                    # comet trail: tight, history dissolves, motion stays the hero
                     trail = TracedPath(
-                        body.get_center, stroke_width=3.0, dissipating_time=1.5
+                        body.get_center, stroke_width=3.0, dissipating_time=1.0
                     )
                     trail.set_stroke(color=body.get_color())
                     self.add(trail)
+                bodies.append((body, track))
 
+            # legend: one color chip + name per body, colors from the scene itself
+            legend = VGroup()
+            for body, track in bodies:
+                row = VGroup(
+                    Dot(radius=0.05, color=body.get_color(), fill_opacity=1.0),
+                    Text(track.name, font_size=18),
+                )
+                row.arrange(RIGHT, buff=0.15)
+                legend.add(row)
+            legend.arrange(DOWN, aligned_edge=LEFT, buff=0.16)
+            legend.set_opacity(0.8)
+            legend.to_corner(UL, buff=0.3)
+            self.add_fixed_in_frame_mobjects(legend)
+
+            # live engine-time readout: the clock this engine data rides on
+            time_digits = DecimalNumber(t_start, num_decimal_places=2).scale(0.4)
+            readout = VGroup(Text("t =", font_size=18), time_digits)
+            readout.arrange(RIGHT, buff=0.08)
+            readout.to_corner(UR, buff=0.3)
+            self.add_fixed_in_frame_mobjects(readout)
+            time_digits.add_updater(lambda digits: digits.set_value(clock.get_value()))
+
+            # subtle parallax: one ~20-degree sweep across the whole clip
+            self.begin_ambient_camera_rotation(rate=-4.0 * DEGREES)
             self.play(
                 clock.animate.set_value(t_end),
                 run_time=duration,
                 rate_func=rate_functions.linear,
             )
+            self.stop_ambient_camera_rotation()
             self.wait(0.5)
 
     EinsteinEngineScene.__qualname__ = EinsteinEngineScene.__name__ = f"EinsteinEngineScene_{folder.name}_{len(visible)}tracks"
