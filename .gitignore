@@ -10,3 +10,11 @@ __pycache__/
 
 # python virtual envs (uv)
 .venv/
+
+# node dependencies
+node_modules/
+
+# renderer output and capture workdirs
+*.mp4
+visualization/.frames/
+visualization/out/
