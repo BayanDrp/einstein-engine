@@ -1,0 +1,16 @@
+{
+    "name": "einstein-engine-visualization",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "description": "Display-only renderer for einstein-engine CSV output.",
+    "scripts": {
+        "test": "node --test test/",
+        "dev": "node bin/dev.mjs",
+        "render": "node bin/render.mjs"
+    },
+    "dependencies": {
+        "puppeteer-core": "25.16.0",
+        "three": "0.187.0"
+    }
+}

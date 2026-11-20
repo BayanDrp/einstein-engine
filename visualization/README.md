@@ -85,7 +85,7 @@ with `bin/render.mjs`:
 * `-q l|m|h|p`: render quality, `l` (480p15), `m` (720p30), `h` (1080p60),
   `p` (4K); default `m`
 * `--seconds N`: override the playback duration; the default is the data span
-  divided by six, clamped to 4 to 30 seconds
+  divided by three, clamped to 6 to 30 seconds
 * `--no-trails`: render without trail lines
 * `--no-bloom`: skip the glow pass
 * `--out NAME`: output video name; default `output_vid`
