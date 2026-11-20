@@ -27,7 +27,7 @@ fn tensor_component<const D: usize>(t: &Field<Tensor2<D>, D>, i: usize, j: usize
 ///
 ///   D_k V^i = d_k V^i + Gamma^i_km V^m
 ///
-/// the result holds D_k V^i as data[k][i].
+/// the result holds D_k V^i as `data[k][i]`.
 pub fn covariant_deriv_vector<const D: usize>(
     vec: &Field<Vector<D>, D>,
     gamma: &ChristoffelField<D, D>,
@@ -69,7 +69,7 @@ pub fn covariant_deriv_vector<const D: usize>(
 ///
 ///   D_k W_i = d_k W_i - Gamma^m_ki W_m
 ///
-/// the result holds D_k W_i as data[k][i].
+/// the result holds D_k W_i as `data[k][i]`.
 pub fn covariant_deriv_covector<const D: usize>(
     covec: &Field<Vector<D>, D>,
     gamma: &ChristoffelField<D, D>,

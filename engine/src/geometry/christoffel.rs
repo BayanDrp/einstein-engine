@@ -8,7 +8,7 @@ use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::grid::Field;
 use crate::numerics::derivatives::central_partial;
 
-/// Christoffel symbols of the spacetime metric. data[a][b][c] = Gamma^a_bc.
+/// Christoffel symbols of the spacetime metric: `data[a][b][c] = Gamma^a_bc`.
 /// N is the number of spacetime dimensions, always D + 1 spatial:
 /// 3 for a 2+1 run, 4 for a 3+1 run.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -88,6 +88,7 @@ pub fn christoffel_symbols<const D: usize, const N: usize>(
 /// asserted. The spatial derivatives, the metric inversion and the Gamma
 /// assembly are identical to `christoffel_symbols`, so all-zero
 /// derivative fields reproduce that function exactly.
+#[allow(clippy::too_many_arguments)]
 pub fn christoffel_symbols_with_time_derivatives<const D: usize, const N: usize>(
     lapse: &LapseField<D>,
     shift: &ShiftField<D>,

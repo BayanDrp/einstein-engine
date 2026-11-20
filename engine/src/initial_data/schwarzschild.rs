@@ -14,7 +14,6 @@ use crate::numerics::rk4::AdmState;
 /// K_ij     = 0
 /// alpha    = (1 - M/(2r)) / (1 + M/(2r))
 /// beta^i   = 0
-
 pub fn schwarzschild<const D: usize>(
     grid: Arc<Grid<D>>,
     mass: f64,
@@ -124,7 +123,7 @@ pub fn isotropic_fields<const D: usize>(
     grid.for_each_index(|idx| {
         let coords = grid.coords(idx);
         let rho_squared: f64 = coords.iter().map(|x| x * x).sum();
-        if !(rho_squared > 0.0) {
+        if !rho_squared.is_finite() || rho_squared <= 0.0 {
             degenerate_node = true;
         }
     });

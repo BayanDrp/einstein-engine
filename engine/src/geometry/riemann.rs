@@ -4,7 +4,7 @@ use crate::grid::Field;
 use crate::numerics::derivatives::central_partial;
 
 /// Riemann curvature tensor of the spacetime metric.
-/// data[mu][nu][rho][sigma] = R^mu_nu rho sigma. N is the number
+/// `data[mu][nu][rho][sigma] = R^mu_nu rho sigma`. N is the number
 /// of spacetime dimensions (3 for 2+1, 4 for 3+1).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Riemann<const N: usize> {

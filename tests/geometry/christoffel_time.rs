@@ -163,9 +163,9 @@ mod tests {
                             for cc in 0..4 {
                                 let expected = if aa == 0 && bb == cc && bb >= 1 {
                                     aadot
-                                } else if aa >= 1 && bb == 0 && cc == aa {
-                                    flat
-                                } else if aa >= 1 && cc == 0 && bb == aa {
+                                } else if aa >= 1
+                                    && ((bb == 0 && cc == aa) || (cc == 0 && bb == aa))
+                                {
                                     flat
                                 } else {
                                     0.0
@@ -266,9 +266,9 @@ mod tests {
                                     1.25
                                 } else if aa == 0 && bb == cc && bb >= 1 {
                                     0.3
-                                } else if aa >= 1 && bb == 0 && cc == aa {
-                                    flat
-                                } else if aa >= 1 && cc == 0 && bb == aa {
+                                } else if aa >= 1
+                                    && ((bb == 0 && cc == aa) || (cc == 0 && bb == aa))
+                                {
                                     flat
                                 } else {
                                     0.0

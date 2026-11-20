@@ -62,9 +62,7 @@ pub fn geodesic_rhs<const D: usize, const N: usize>(
     // w^mu = dx^mu/dt = (1, v^i) it is the velocity in spacetime coordinates, the first component is 1 because we are using coordinate time as the parameter.
     let mut w = [0.0f64; N];
     w[0] = 1.0;
-    for i in 0..D {
-        w[1 + i] = state.vel[i];
-    }
+    w[1..=D].copy_from_slice(&state.vel);
     // the acceleration vector
     let mut acc = [0.0f64; D];
     for i in 0..D {

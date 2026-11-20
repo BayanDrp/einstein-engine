@@ -523,7 +523,7 @@ fn bssn_adm_k_identity_holds_with_matter() {
     g.for_each_index(|idx| {
         let gamma = adm.gamma.get(idx);
         let k = adm.k.get(idx);
-        let ginv = invert(&matrix(&gamma));
+        let ginv = invert(&matrix(gamma));
         let mut k2 = 0.0;
         for a in 0..D {
             for b in 0..D {

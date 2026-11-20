@@ -40,7 +40,6 @@ pub fn dust<const N: usize, const D: usize>(rho: &Field<f64, D>) -> StressEnergy
 /// Compute the dust stress-energy tensor at one grid point.
 ///
 /// T_mu_nu = rho * u_mu * u_nu
-
 pub fn dust_stress_energy<const N: usize>(rho: f64, u: [f64; N]) -> StressEnergy<N> {
     let mut t = StressEnergy::zero();
 

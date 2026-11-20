@@ -130,3 +130,7 @@ path = "../tests/physics/orbits.rs"
 [[test]]
 name = "unit_coupled_matter"
 path = "../tests/physics/coupled_matter.rs"
+
+[lints.clippy]
+# Explicit index loops mirror the tensor notation in the numerical kernels.
+needless_range_loop = "allow"

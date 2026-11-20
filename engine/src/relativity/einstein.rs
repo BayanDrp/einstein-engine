@@ -35,7 +35,7 @@ pub fn einstein_tensor<const D: usize, const N: usize>(
 
     lapse.grid.for_each_index(|idx| {
         let metric =
-            SpacetimeMetric::from_3plus1(*lapse.get(idx), &shift.get(idx), &spatial.get(idx));
+            SpacetimeMetric::from_3plus1(*lapse.get(idx), shift.get(idx), spatial.get(idx));
 
         let g = metric.as_matrix::<N>();
 

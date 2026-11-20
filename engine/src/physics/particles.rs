@@ -108,6 +108,12 @@ pub struct Particles<const D: usize> {
     next_id: u64,
 }
 
+impl<const D: usize> Default for Particles<D> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const D: usize> Particles<D> {
     pub fn new() -> Self {
         Self {
