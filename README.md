@@ -1,5 +1,7 @@
 # Einstein Engine
 
+[![CI](https://github.com/BayanDrp/einstein-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/BayanDrp/einstein-engine/actions/workflows/ci.yml)
+
 A Rust-based numerical relativity engine for exploring and simulating Einstein's equations on a numerical spacetime grid.
 
 The project aims to build a modern, modular, and readable bridge between the mathematics of General Relativity and high-performance numerical simulation.
