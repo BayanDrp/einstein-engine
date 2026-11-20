@@ -5,7 +5,7 @@
     "type": "module",
     "description": "Display-only renderer for einstein-engine CSV output.",
     "scripts": {
-        "test": "node --test test/",
+        "test": "node --test",
         "dev": "node bin/dev.mjs",
         "render": "node bin/render.mjs"
     },
