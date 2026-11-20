@@ -1,21 +1,13 @@
 use std::sync::Arc;
 
-use crate::geometry::metric::{
-    ExtrinsicCurvature,
-    LapseField,
-    ShiftField,
-    SliceMetric,
-};
+use crate::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftField, SliceMetric};
 use crate::geometry::tensor::{Tensor2, Vector};
 use crate::grid::boundary::{apply_nonperiodic, BoundaryConfig, BoundaryValues};
 use crate::grid::{Field, Grid};
 use crate::physics::dust::dust_sources;
-use crate::physics::dust::{DustState, };
+use crate::physics::dust::DustState;
 use crate::physics::dust_evolution::{dust_rhs, DustRk4Stages};
-use crate::relativity::evolution::{
-    extrinsic_curvature_rhs_with_matter,
-    spatial_metric_rhs,
-};
+use crate::relativity::evolution::{extrinsic_curvature_rhs_with_matter, spatial_metric_rhs};
 use crate::relativity::gauge;
 use crate::relativity::matter::{FourVelocityError, MatterSources};
 
@@ -88,15 +80,9 @@ impl<const D: usize> AdmState<D> {
 
         Self {
             gamma: Field::new(grid.clone(), identity),
-            k: Field::new(
-                grid.clone(),
-                Tensor2::<D>::zero(),
-            ),
+            k: Field::new(grid.clone(), Tensor2::<D>::zero()),
             lapse: Field::new(grid.clone(), 1.0),
-            shift: Field::new(
-                grid.clone(),
-                Vector::<D>::zero(),
-            ),
+            shift: Field::new(grid.clone(), Vector::<D>::zero()),
             grid,
         }
     }
@@ -109,11 +95,7 @@ impl<const D: usize> AdmState<D> {
     /// ∂t β^i = 0
     ///
     /// Vacuum specialization: no matter sources.
-    pub fn rhs(
-        &self,
-        boundary: &BoundaryConfig<D>,
-        boundary_values: &BoundaryValues<D>,
-    ) -> Self {
+    pub fn rhs(&self, boundary: &BoundaryConfig<D>, boundary_values: &BoundaryValues<D>) -> Self {
         self.rhs_with_matter(
             &MatterSources::vacuum(&self.grid),
             boundary,
@@ -359,7 +341,14 @@ impl<const D: usize> AdmState<D> {
         // k1 = F(Y_n)
         let s1 = dust_sources::<4, D>(&m0, &y0.lapse, &y0.shift, &y0.gamma)?;
         let k1g = y0.rhs_with_matter(&s1, boundary, boundary_values);
-        let k1m = dust_rhs(&m0, &y0.lapse, &y0.shift, &y0.gamma, boundary, boundary_values);
+        let k1m = dust_rhs(
+            &m0,
+            &y0.lapse,
+            &y0.shift,
+            &y0.gamma,
+            boundary,
+            boundary_values,
+        );
 
         // k2 = F(Y_n + dt/2 * k1)
         let mut y2 = y0.axpy(0.5 * dt, &k1g);
@@ -367,7 +356,14 @@ impl<const D: usize> AdmState<D> {
         y2.enforce_boundaries(boundary, boundary_values);
         let s2 = dust_sources::<4, D>(&m2, &y2.lapse, &y2.shift, &y2.gamma)?;
         let k2g = y2.rhs_with_matter(&s2, boundary, boundary_values);
-        let k2m = dust_rhs(&m2, &y2.lapse, &y2.shift, &y2.gamma, boundary, boundary_values);
+        let k2m = dust_rhs(
+            &m2,
+            &y2.lapse,
+            &y2.shift,
+            &y2.gamma,
+            boundary,
+            boundary_values,
+        );
 
         // k3 = F(Y_n + dt/2 * k2)
         let mut y3 = y0.axpy(0.5 * dt, &k2g);
@@ -375,7 +371,14 @@ impl<const D: usize> AdmState<D> {
         y3.enforce_boundaries(boundary, boundary_values);
         let s3 = dust_sources::<4, D>(&m3, &y3.lapse, &y3.shift, &y3.gamma)?;
         let k3g = y3.rhs_with_matter(&s3, boundary, boundary_values);
-        let k3m = dust_rhs(&m3, &y3.lapse, &y3.shift, &y3.gamma, boundary, boundary_values);
+        let k3m = dust_rhs(
+            &m3,
+            &y3.lapse,
+            &y3.shift,
+            &y3.gamma,
+            boundary,
+            boundary_values,
+        );
 
         // k4 = F(Y_n + dt * k3)
         let mut y4 = y0.axpy(dt, &k3g);
@@ -383,7 +386,14 @@ impl<const D: usize> AdmState<D> {
         y4.enforce_boundaries(boundary, boundary_values);
         let s4 = dust_sources::<4, D>(&m4, &y4.lapse, &y4.shift, &y4.gamma)?;
         let k4g = y4.rhs_with_matter(&s4, boundary, boundary_values);
-        let k4m = dust_rhs(&m4, &y4.lapse, &y4.shift, &y4.gamma, boundary, boundary_values);
+        let k4m = dust_rhs(
+            &m4,
+            &y4.lapse,
+            &y4.shift,
+            &y4.gamma,
+            boundary,
+            boundary_values,
+        );
 
         Ok((
             AdmRk4Stages {
@@ -425,12 +435,8 @@ impl<const D: usize> AdmState<D> {
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> Result<(Self, DustState<D>), FourVelocityError> {
-        let (stages, dust_stages) = self.step_rk4_with_dust_stages(
-            dust,
-            dt,
-            boundary,
-            boundary_values,
-        )?;
+        let (stages, dust_stages) =
+            self.step_rk4_with_dust_stages(dust, dt, boundary, boundary_values)?;
 
         Ok((
             stages.collapse(boundary, boundary_values),
@@ -438,19 +444,14 @@ impl<const D: usize> AdmState<D> {
         ))
     }
 
-    fn add_scaled_in_place(
-        &mut self,
-        a: f64,
-        rhs: &Self,
-    ) {
+    fn add_scaled_in_place(&mut self, a: f64, rhs: &Self) {
         self.grid.for_each_index(|idx| {
             let mut gamma = *self.gamma.get(idx);
             let gamma_rhs = *rhs.gamma.get(idx);
 
             for i in 0..D {
                 for j in 0..D {
-                    gamma[(i, j)] +=
-                        a * gamma_rhs[(i, j)];
+                    gamma[(i, j)] += a * gamma_rhs[(i, j)];
                 }
             }
 
@@ -461,8 +462,7 @@ impl<const D: usize> AdmState<D> {
 
             for i in 0..D {
                 for j in 0..D {
-                    k[(i, j)] +=
-                        a * k_rhs[(i, j)];
+                    k[(i, j)] += a * k_rhs[(i, j)];
                 }
             }
 
@@ -471,20 +471,16 @@ impl<const D: usize> AdmState<D> {
             let lapse_rhs = *rhs.lapse.get(idx);
             let lapse = *self.lapse.get(idx);
 
-            self.lapse.set(
-                idx,
-                lapse + a * lapse_rhs,
-            );
+            self.lapse.set(idx, lapse + a * lapse_rhs);
 
             let mut shift = *self.shift.get(idx);
             let shift_rhs = *rhs.shift.get(idx);
 
             for i in 0..D {
-                shift[i] +=
-                    a * shift_rhs[i];
+                shift[i] += a * shift_rhs[i];
             }
 
-        self.shift.set(idx, shift);
+            self.shift.set(idx, shift);
         });
     }
 }

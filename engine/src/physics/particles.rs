@@ -1,10 +1,6 @@
 use crate::geometry::christoffel::ChristoffelField;
 use crate::numerics::interpolation::InterpolationError;
-use crate::physics::geodesics::{
-    geodesic_stages_step_rk4,
-    GeodesicState,
-    StageConnections,
-};
+use crate::physics::geodesics::{geodesic_stages_step_rk4, GeodesicState, StageConnections};
 
 /// One committed state of a particle, stamped with its coordinate time.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,11 +137,7 @@ impl<const D: usize> Particles<D> {
     ///
     /// Rejects non-finite time or state up front; the returned particle is
     /// always ready to step.
-    pub fn spawn(
-        &mut self,
-        time: f64,
-        state: GeodesicState<D>,
-    ) -> Result<u64, ParticleError> {
+    pub fn spawn(&mut self, time: f64, state: GeodesicState<D>) -> Result<u64, ParticleError> {
         if !time.is_finite() {
             return Err(ParticleError::NonFiniteTime);
         }
@@ -249,8 +241,7 @@ impl<const D: usize> Particles<D> {
         dt: f64,
         step_one: impl Fn(&GeodesicState<D>) -> Result<GeodesicState<D>, InterpolationError>,
     ) -> Result<(), ParticleError> {
-        let mut pending: Vec<PendingStep<D>> =
-            Vec::with_capacity(self.particles.len());
+        let mut pending: Vec<PendingStep<D>> = Vec::with_capacity(self.particles.len());
 
         for particle in &self.particles {
             if particle.status != ParticleStatus::Active {

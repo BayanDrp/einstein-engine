@@ -35,7 +35,10 @@ fn small_grid() -> Arc<Grid<D>> {
 }
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 /// Transversely traceless profile: h_yy = g(x) with h_zz = -g(x), so the
@@ -187,7 +190,10 @@ fn gauge_evolves_the_lapse_and_freezes_the_shift() {
         .map(|(a, b)| (a - b).abs())
         .fold(0.0f64, f64::max);
     assert!(moved > 1.0e-9, "lapse should move, moved {moved}");
-    assert!(moved < 1.0e-6, "traceless wave should barely move the lapse: {moved}");
+    assert!(
+        moved < 1.0e-6,
+        "traceless wave should barely move the lapse: {moved}"
+    );
 }
 
 #[test]
@@ -216,7 +222,10 @@ fn wave_crest_moves_at_speed_of_light() {
     let state = wave_state(grid.clone());
 
     let start = crest_x(&state, X0, LAMBDA / 2.0);
-    assert!((start - X0).abs() < 0.02, "crest should begin near x0, got {start}");
+    assert!(
+        (start - X0).abs() < 0.02,
+        "crest should begin near x0, got {start}"
+    );
 
     let dt = 0.5 * H;
     let steps = 8;
@@ -256,7 +265,10 @@ fn rk4_temporal_error_falls_as_fourth_power() {
     let coarse_error = component_error(&coarse, &reference, 1, 1);
     let fine_error = component_error(&fine, &reference, 1, 1);
 
-    assert!(coarse_error > 0.0, "coarse run should differ from the reference");
+    assert!(
+        coarse_error > 0.0,
+        "coarse run should differ from the reference"
+    );
 
     let ratio = coarse_error / fine_error;
     assert!(

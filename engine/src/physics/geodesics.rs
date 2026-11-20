@@ -34,14 +34,12 @@
 //! formulation carries its own RK4 loop).
 
 use crate::geometry::christoffel::{
-    christoffel_symbols_with_time_derivatives,
-    Christoffel,
-    ChristoffelField,
+    christoffel_symbols_with_time_derivatives, Christoffel, ChristoffelField,
 };
 use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::numerics::interpolation::{interpolate_christoffel, InterpolationError};
-use crate::relativity::bssn::{stage_physical_adm, BssnRk4Stages};
 use crate::numerics::rk4::AdmRk4Stages;
+use crate::relativity::bssn::{stage_physical_adm, BssnRk4Stages};
 
 /// Test-particle state: position x^i and coordinate velocity v^i = dx^i/dt.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -56,7 +54,10 @@ pub fn geodesic_rhs<const D: usize, const N: usize>(
     state: &GeodesicState<D>,
     gamma: &Christoffel<N>,
 ) -> GeodesicState<D> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
 
     // w^mu = dx^mu/dt = (1, v^i) it is the velocity in spacetime coordinates, the first component is 1 because we are using coordinate time as the parameter.
     let mut w = [0.0f64; N];
@@ -64,7 +65,7 @@ pub fn geodesic_rhs<const D: usize, const N: usize>(
     for i in 0..D {
         w[1 + i] = state.vel[i];
     }
-    // the acceleration vector 
+    // the acceleration vector
     let mut acc = [0.0f64; D];
     for i in 0..D {
         let mut a = 0.0;
@@ -84,7 +85,11 @@ pub fn geodesic_rhs<const D: usize, const N: usize>(
     }
 }
 
-fn geodesic_axpy<const D: usize>(state: &GeodesicState<D>, a: f64, rhs: &GeodesicState<D>) -> GeodesicState<D> {
+fn geodesic_axpy<const D: usize>(
+    state: &GeodesicState<D>,
+    a: f64,
+    rhs: &GeodesicState<D>,
+) -> GeodesicState<D> {
     let mut pos = [0.0f64; D];
     let mut vel = [0.0f64; D];
     for i in 0..D {
@@ -123,7 +128,10 @@ pub fn geodesic_stages_step_rk4<const D: usize, const N: usize>(
     dt: f64,
     connections: [&ChristoffelField<N, D>; 4],
 ) -> Result<GeodesicState<D>, InterpolationError> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
     assert!(dt.is_finite() && dt > 0.0);
 
     let k1 = geodesic_rhs(state, &interpolate_christoffel(connections[0], state.pos)?);
@@ -178,7 +186,10 @@ pub fn stage_connections<const D: usize, const N: usize>(
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> StageConnections<N, D> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
     assert!(
         stages.dt.is_finite() && stages.dt > 0.0,
         "stage dt must be finite and positive"
@@ -249,7 +260,10 @@ pub fn bssn_stage_connections<const D: usize, const N: usize>(
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> StageConnections<N, D> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
     assert!(
         stages.dt.is_finite() && stages.dt > 0.0,
         "stage dt must be finite and positive"

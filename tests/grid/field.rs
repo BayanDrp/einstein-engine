@@ -52,7 +52,8 @@ mod tests {
     }
 
     #[test]
-    fn field_holds_matrix_values() {        let mut f: Field<[[f64; 3]; 3], 3> = Field::zeros(grid3());
+    fn field_holds_matrix_values() {
+        let mut f: Field<[[f64; 3]; 3], 3> = Field::zeros(grid3());
         let m = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
         f.set([1, 1, 1], m);
         assert_eq!(*f.get([1, 1, 1]), m);

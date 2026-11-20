@@ -30,7 +30,10 @@ fn zero_shift(g: &Arc<Grid<D>>) -> Field<Vector<D>, D> {
 }
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 // Conserved Dtilde = sqrt(det gamma) rho W round-trips through the
@@ -73,7 +76,8 @@ fn homogeneous_rhs_vanishes() {
     let vel = Field::new(g.clone(), Vector::<D>::zero());
     let dust = DustState::from_primitives(&rho_in, &vel, &flat_metric(&g));
 
-    let r = dust_rhs(&dust, 
+    let r = dust_rhs(
+        &dust,
         &unit_lapse(&g),
         &zero_shift(&g),
         &flat_metric(&g),
@@ -114,11 +118,7 @@ fn bump_advects_at_velocity() {
     let mut vel_vec = Vector::<D>::zero();
     vel_vec[0] = 0.2;
     let w = 1.0 / (1.0 - 0.2f64.powi(2)).sqrt();
-    let dust = DustState::from_primitives(
-        &rho,
-        &Field::new(g.clone(), vel_vec),
-        &flat_metric(&g),
-    );
+    let dust = DustState::from_primitives(&rho, &Field::new(g.clone(), vel_vec), &flat_metric(&g));
 
     let mut total0 = 0.0f64;
     g.for_each_index(|idx| {
@@ -129,7 +129,8 @@ fn bump_advects_at_velocity() {
     let steps = (0.5 / dt).round() as usize;
     let mut state = dust;
     for _ in 0..steps {
-        state = dust_step_rk4(&state, 
+        state = dust_step_rk4(
+            &state,
             dt,
             &unit_lapse(&g),
             &zero_shift(&g),
@@ -239,19 +240,12 @@ fn lapse_gradient_accelerates_dust() {
     let dust = DustState::from_primitives(&rho_in, &vel, &flat_metric(&g));
 
     let run = |shift: &Field<Vector<D>, D>| {
-        let r = dust_rhs(&dust, 
-            &lapse,
-            shift,
-            &flat_metric(&g),
-            &config,
-            &values,
-        );
+        let r = dust_rhs(&dust, &lapse, shift, &flat_metric(&g), &config, &values);
         let mut worst = 0.0f64;
         g.for_each_index(|idx| {
             let x = g.coords(idx)[0];
             // -rho d_x alpha = +2 pi * 0.05 sin(2 pi x)
-            let want = 2.0 * std::f64::consts::PI * 0.05
-                * (2.0 * std::f64::consts::PI * x).sin();
+            let want = 2.0 * std::f64::consts::PI * 0.05 * (2.0 * std::f64::consts::PI * x).sin();
             let got = r.densitized_momentum.get(idx);
             worst = worst.max((got[0] - want).abs());
             worst = worst.max(got[1].abs());
@@ -266,11 +260,22 @@ fn lapse_gradient_accelerates_dust() {
     let mut beta_vec = Vector::<D>::zero();
     beta_vec[0] = 0.1;
     let shifted = run(&Field::new(g.clone(), beta_vec));
-    assert!(shifted < 1.0e-2, "lapse force mismatch with shift {shifted}");
+    assert!(
+        shifted < 1.0e-2,
+        "lapse force mismatch with shift {shifted}"
+    );
 
     // uniform shift is invisible to the sources: identical RHS bit-for-bit
-    let r0 = dust_rhs(&dust, &lapse, &zero_shift(&g), &flat_metric(&g), &config, &values);
-    let r1 = dust_rhs(&dust, 
+    let r0 = dust_rhs(
+        &dust,
+        &lapse,
+        &zero_shift(&g),
+        &flat_metric(&g),
+        &config,
+        &values,
+    );
+    let r1 = dust_rhs(
+        &dust,
         &lapse,
         &Field::new(g.clone(), beta_vec),
         &flat_metric(&g),

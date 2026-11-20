@@ -19,7 +19,10 @@ fn wave_grid() -> Arc<Grid<D>> {
 }
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 fn zero_rho(grid: &Arc<Grid<D>>) -> Field<f64, D> {
@@ -177,8 +180,14 @@ fn constraint_residual_stays_bounded_over_evolution() {
             r.momentum_max
         );
 
-        assert!(r.hamiltonian_max.is_finite(), "hamiltonian residual went non-finite");
-        assert!(r.momentum_max.is_finite(), "momentum residual went non-finite");
+        assert!(
+            r.hamiltonian_max.is_finite(),
+            "hamiltonian residual went non-finite"
+        );
+        assert!(
+            r.momentum_max.is_finite(),
+            "momentum residual went non-finite"
+        );
     }
 
     let final_h = measure(&state).hamiltonian_max;

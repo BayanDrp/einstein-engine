@@ -134,10 +134,8 @@ mod tests {
             }
         }
         let shift: Field<Vector<2>, 2> = Field::new(grid.clone(), Vector::new([0.5, 0.0]));
-        let spatial: Field<Tensor2<2>, 2> = Field::new(
-            grid.clone(),
-            Tensor2::new([[1.0, 0.0], [0.0, 1.0]]),
-        );
+        let spatial: Field<Tensor2<2>, 2> =
+            Field::new(grid.clone(), Tensor2::new([[1.0, 0.0], [0.0, 1.0]]));
         let config = BoundaryConfig::<2>::periodic();
         let values = BoundaryValues::<2>::zeros();
 

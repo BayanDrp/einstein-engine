@@ -1,13 +1,12 @@
-use crate::grid::Field;
 use super::riemann::RiemannField;
+use crate::grid::Field;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ricci<const N: usize> {
     pub data: [[f64; N]; N],
 }
 
-pub type RicciField<const N: usize, const D: usize> =
-    Field<Ricci<N>, D>;
+pub type RicciField<const N: usize, const D: usize> = Field<Ricci<N>, D>;
 
 impl<const N: usize> Ricci<N> {
     pub fn zero() -> Self {
@@ -49,4 +48,3 @@ pub fn ricci_from_riemann<const N: usize, const D: usize>(
 
     result
 }
-

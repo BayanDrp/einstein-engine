@@ -1,23 +1,19 @@
 #[cfg(test)]
 mod tests {
     use einstein_engine::geometry::christoffel::{
-        christoffel_symbols,
-        christoffel_symbols_with_time_derivatives,
-        ChristoffelField,
+        christoffel_symbols, christoffel_symbols_with_time_derivatives, ChristoffelField,
     };
-    use einstein_engine::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftField, SliceMetric};
+    use einstein_engine::geometry::metric::{
+        ExtrinsicCurvature, LapseField, ShiftField, SliceMetric,
+    };
     use einstein_engine::geometry::tensor::{Tensor2, Vector};
     use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
     use einstein_engine::grid::{Field, Grid};
     use einstein_engine::numerics::interpolation::interpolate_christoffel;
     use einstein_engine::numerics::rk4::AdmState;
     use einstein_engine::physics::geodesics::{
-        geodesic_rhs,
-        geodesic_stages_step_rk4,
-        geodesic_step_rk4,
-        stage_connections,
-        GeodesicState,
-        StageConnections,
+        geodesic_rhs, geodesic_stages_step_rk4, geodesic_step_rk4, stage_connections,
+        GeodesicState, StageConnections,
     };
     use einstein_engine::physics::particles::{ParticleError, ParticleStatus, Particles};
     use einstein_engine::relativity::matter::MatterSources;
@@ -27,7 +23,10 @@ mod tests {
     const N: usize = 4;
 
     fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-        (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+        (
+            BoundaryConfig::<D>::periodic(),
+            BoundaryValues::<D>::zeros(),
+        )
     }
 
     fn identity() -> Tensor2<D> {
@@ -70,13 +69,8 @@ mod tests {
             shift,
         };
 
-        let frozen = christoffel_symbols::<D, N>(
-            &adm.lapse,
-            &adm.shift,
-            &adm.gamma,
-            &config,
-            &values,
-        );
+        let frozen =
+            christoffel_symbols::<D, N>(&adm.lapse, &adm.shift, &adm.gamma, &config, &values);
 
         (adm, frozen)
     }
@@ -116,12 +110,9 @@ mod tests {
             vel: [0.3, 0.1, -0.2],
         };
         let direct = geodesic_step_rk4::<D, N>(&state, dt, &frozen).unwrap();
-        let staged = geodesic_stages_step_rk4::<D, N>(
-            &state,
-            dt,
-            [&frozen, &frozen, &frozen, &frozen],
-        )
-        .unwrap();
+        let staged =
+            geodesic_stages_step_rk4::<D, N>(&state, dt, [&frozen, &frozen, &frozen, &frozen])
+                .unwrap();
         assert_eq!(direct, staged);
 
         // particle level: histories identical over two coupled steps
@@ -201,14 +192,7 @@ mod tests {
                 dgamma_dt.set(idx, a);
             });
             bundles.push(christoffel_symbols_with_time_derivatives::<D, N>(
-                &lapse,
-                &shift,
-                &gamma,
-                &dgamma_dt,
-                &dshift_dt,
-                &dlapse_dt,
-                &config,
-                &values,
+                &lapse, &shift, &gamma, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
             ));
         }
 
@@ -220,12 +204,8 @@ mod tests {
         // hand-rolled RK4 with per-stage sampling, built only from public
         // primitives: geodesic_rhs on stage-interpolated tables
         let dt = 0.1;
-        let interp =
-            |i: usize, pos: [f64; D]| interpolate_christoffel(&bundles[i], pos).unwrap();
-        let axpy = |s: &GeodesicState<D>,
-                    a: f64,
-                    d: &GeodesicState<D>|
-         -> GeodesicState<D> {
+        let interp = |i: usize, pos: [f64; D]| interpolate_christoffel(&bundles[i], pos).unwrap();
+        let axpy = |s: &GeodesicState<D>, a: f64, d: &GeodesicState<D>| -> GeodesicState<D> {
             let mut out = *s;
             for i in 0..D {
                 out.pos[i] += a * d.pos[i];
@@ -296,7 +276,12 @@ mod tests {
 
         let connections = StageConnections {
             dt: 0.1,
-            connections: [frozen.clone(), frozen.clone(), frozen.clone(), frozen.clone()],
+            connections: [
+                frozen.clone(),
+                frozen.clone(),
+                frozen.clone(),
+                frozen.clone(),
+            ],
         };
 
         let initial = GeodesicState {
@@ -317,14 +302,21 @@ mod tests {
         // a zero-length synchronized step is an invalid time step
         let zero = StageConnections {
             dt: 0.0,
-            connections: [frozen.clone(), frozen.clone(), frozen.clone(), frozen.clone()],
+            connections: [
+                frozen.clone(),
+                frozen.clone(),
+                frozen.clone(),
+                frozen.clone(),
+            ],
         };
         let err = particles.step_all_with_connections(0.0, &zero).unwrap_err();
         assert!(matches!(err, ParticleError::InvalidTimeStep));
 
         // one full dt ahead: refused with the particle id and coupling
         // time reported, and nothing moved
-        let err = particles.step_all_with_connections(0.1, &connections).unwrap_err();
+        let err = particles
+            .step_all_with_connections(0.1, &connections)
+            .unwrap_err();
         let (id, coupling) = match &err {
             ParticleError::TimeMismatch {
                 particle_id,
@@ -342,7 +334,9 @@ mod tests {
         assert_eq!(p.status, ParticleStatus::Active);
 
         // exact coupling time: accepted, ballistic advance by dt
-        particles.step_all_with_connections(0.0, &connections).unwrap();
+        particles
+            .step_all_with_connections(0.0, &connections)
+            .unwrap();
         let p = particles.get(0).unwrap();
         assert_eq!(p.time, 0.1);
         assert_eq!(p.state.pos[0], 0.75 + 0.1 * 0.2);
@@ -353,7 +347,9 @@ mod tests {
         // is ~1e-9
         let mut tolerant: Particles<D> = Particles::new();
         tolerant.spawn(1e-10, initial).unwrap();
-        tolerant.step_all_with_connections(0.0, &connections).unwrap();
+        tolerant
+            .step_all_with_connections(0.0, &connections)
+            .unwrap();
         assert!((tolerant.get(0).unwrap().time - (1e-10 + 0.1)).abs() < 1e-15);
     }
 
@@ -372,7 +368,12 @@ mod tests {
 
         let connections = StageConnections {
             dt: 0.1,
-            connections: [frozen.clone(), frozen.clone(), frozen.clone(), frozen.clone()],
+            connections: [
+                frozen.clone(),
+                frozen.clone(),
+                frozen.clone(),
+                frozen.clone(),
+            ],
         };
 
         let mut particles: Particles<D> = Particles::new();
@@ -413,14 +414,19 @@ mod tests {
         // exemption
         let mut t = particles.get(runner_id).unwrap().time;
         for _ in 0..2 {
-            particles.step_all_with_connections(t, &connections).unwrap();
+            particles
+                .step_all_with_connections(t, &connections)
+                .unwrap();
             t = particles.get(runner_id).unwrap().time;
         }
 
         let stopped = particles.get(0).unwrap();
         assert_eq!(stopped.time, stopped_time);
         assert_eq!(stopped.status, ParticleStatus::StoppedAtBoundary);
-        assert!((stopped.time - t).abs() > 0.19, "clocks must have drifted apart");
+        assert!(
+            (stopped.time - t).abs() > 0.19,
+            "clocks must have drifted apart"
+        );
 
         let runner = particles.get(runner_id).unwrap();
         assert_eq!(runner.status, ParticleStatus::Active);
@@ -466,14 +472,7 @@ mod tests {
                 dgamma_dt.set(idx, da);
             });
             christoffel_symbols_with_time_derivatives::<D, N>(
-                &lapse,
-                &shift,
-                &gamma,
-                &dgamma_dt,
-                &dshift_dt,
-                &dlapse_dt,
-                &config,
-                &values,
+                &lapse, &shift, &gamma, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
             )
         };
 
@@ -508,7 +507,9 @@ mod tests {
                 dt,
                 connections: bundles,
             };
-            particles.step_all_with_connections(t, &connections).unwrap();
+            particles
+                .step_all_with_connections(t, &connections)
+                .unwrap();
             let next_t = particles.get(0).unwrap().time;
             t = next_t;
         }
@@ -581,8 +582,7 @@ mod tests {
         let idx = [1usize, 1, 1];
 
         // one coupled step: real dust ADM stage data
-        let stages =
-            adm.step_rk4_with_matter_stages(0.01, &matter, &config, &values);
+        let stages = adm.step_rk4_with_matter_stages(0.01, &matter, &config, &values);
         let connections = stage_connections::<D, N>(&stages, &config, &values);
 
         // 1. every bundle encodes its own (state, rate) pair
@@ -635,10 +635,7 @@ mod tests {
         let interp = |i: usize, pos: [f64; D]| {
             interpolate_christoffel(&connections.connections[i], pos).unwrap()
         };
-        let axpy = |s: &GeodesicState<D>,
-                    a: f64,
-                    d: &GeodesicState<D>|
-         -> GeodesicState<D> {
+        let axpy = |s: &GeodesicState<D>, a: f64, d: &GeodesicState<D>| -> GeodesicState<D> {
             let mut out = *s;
             for i in 0..D {
                 out.pos[i] += a * d.pos[i];
@@ -665,8 +662,14 @@ mod tests {
         );
 
         let committed = particles.get(0).unwrap();
-        assert_eq!(committed.state.pos, expected.pos, "committed pos vs hand RK4");
-        assert_eq!(committed.state.vel, expected.vel, "committed vel vs hand RK4");
+        assert_eq!(
+            committed.state.pos, expected.pos,
+            "committed pos vs hand RK4"
+        );
+        assert_eq!(
+            committed.state.vel, expected.vel,
+            "committed vel vs hand RK4"
+        );
 
         // 3. the clock tracks the ADM step exactly
         assert_eq!(committed.time, 0.01);
@@ -674,8 +677,7 @@ mod tests {
         // recompute the ADM state advance for completeness: the next
         // coupling step must see exactly the collapsed state
         adm = stages.collapse(&config, &values);
-        let stages2 =
-            adm.step_rk4_with_matter_stages(0.01, &matter, &config, &values);
+        let stages2 = adm.step_rk4_with_matter_stages(0.01, &matter, &config, &values);
         let connections2 = stage_connections::<D, N>(&stages2, &config, &values);
         particles
             .step_all_with_connections(committed.time, &connections2)

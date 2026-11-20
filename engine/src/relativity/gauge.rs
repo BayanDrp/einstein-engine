@@ -1,14 +1,6 @@
-use crate::geometry::metric::{
-    ExtrinsicCurvature,
-    LapseField,
-    ShiftField,
-    SliceMetric,
-};
+use crate::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftField, SliceMetric};
 use crate::geometry::tensor::{invert, Vector};
-use crate::grid::boundary::{
-    BoundaryConfig,
-    BoundaryValues,
-};
+use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::grid::Field;
 use crate::numerics::derivatives::shift_derivative;
 

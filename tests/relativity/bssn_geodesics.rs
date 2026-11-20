@@ -7,7 +7,9 @@ mod tests {
     use einstein_engine::grid::{Field, Grid};
     use einstein_engine::numerics::interpolation::interpolate_christoffel;
     use einstein_engine::numerics::rk4::AdmState;
-    use einstein_engine::physics::geodesics::{bssn_stage_connections, geodesic_rhs, StageConnections};
+    use einstein_engine::physics::geodesics::{
+        bssn_stage_connections, geodesic_rhs, StageConnections,
+    };
     use einstein_engine::physics::particles::Particles;
     use einstein_engine::relativity::bssn::{stage_physical_adm, BssnState};
     use einstein_engine::relativity::matter::MatterSources;
@@ -17,7 +19,10 @@ mod tests {
     const N: usize = 4;
 
     fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-        (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+        (
+            BoundaryConfig::<D>::periodic(),
+            BoundaryValues::<D>::zeros(),
+        )
     }
 
     fn identity() -> Tensor2<D> {
@@ -88,7 +93,8 @@ mod tests {
             for i in 0..D {
                 for j in 0..D {
                     assert!(
-                        (a.conformal_metric.get(idx)[(i, j)] - b.conformal_metric.get(idx)[(i, j)]).abs()
+                        (a.conformal_metric.get(idx)[(i, j)] - b.conformal_metric.get(idx)[(i, j)])
+                            .abs()
                             <= tol,
                         "{what}: conformal metric ({}, {}) differs at {:?}",
                         i,
@@ -182,10 +188,7 @@ mod tests {
         conns: &StageConnections<N, D>,
     ) -> einstein_engine::physics::geodesics::GeodesicState<D> {
         use einstein_engine::physics::geodesics::GeodesicState;
-        let axpy = |s: &GeodesicState<D>,
-                    a: f64,
-                    d: &GeodesicState<D>|
-         -> GeodesicState<D> {
+        let axpy = |s: &GeodesicState<D>, a: f64, d: &GeodesicState<D>| -> GeodesicState<D> {
             let mut out = *s;
             for i in 0..D {
                 out.pos[i] += a * d.pos[i];
@@ -264,10 +267,7 @@ mod tests {
             gamma,
             k,
             lapse: LapseField::new(grid.clone(), 1.05),
-            shift: ShiftField::new(
-                grid.clone(),
-                Vector::new([0.25, 0.03, -0.1]),
-            ),
+            shift: ShiftField::new(grid.clone(), Vector::new([0.25, 0.03, -0.1])),
         };
 
         let bssn = BssnState::<D>::from_adm(&adm, &config, &values);
@@ -400,13 +400,8 @@ mod tests {
         let connections = bssn_stage_connections::<D, N>(&stages, &config, &values);
 
         let adm0 = stages.y0.to_adm();
-        let static_ref = christoffel_symbols::<D, N>(
-            &adm0.lapse,
-            &adm0.shift,
-            &adm0.gamma,
-            &config,
-            &values,
-        );
+        let static_ref =
+            christoffel_symbols::<D, N>(&adm0.lapse, &adm0.shift, &adm0.gamma, &config, &values);
 
         // stage 0: the static limit reproduces the static constructor
         // including its Christoffel-parity, exactly at every point
@@ -483,12 +478,8 @@ mod tests {
 
         // collapse reproduces the classic stepper exactly
         let next = steps.collapse(&config, &values);
-        let next_ref = x0.step_rk4_with_matter(
-            dt,
-            &MatterSources::vacuum(&x0.grid),
-            &config,
-            &values,
-        );
+        let next_ref =
+            x0.step_rk4_with_matter(dt, &MatterSources::vacuum(&x0.grid), &config, &values);
         bssn_state_eq(&next, &next_ref, 0.0, "collapse");
 
         // the vacuum wrapper really is the vacuum specialization
@@ -589,8 +580,7 @@ mod tests {
                 for b in 1..N {
                     for c in 1..N {
                         assert_eq!(
-                            bundle.data[a][b][c],
-                            0.0,
+                            bundle.data[a][b][c], 0.0,
                             "bundle {i}: spatial component ({a},{b},{c}) not zero"
                         );
                     }
@@ -614,12 +604,8 @@ mod tests {
         let x0 = uniform_expanding_state(grid.clone());
         let dt = 0.01;
 
-        let stages = x0.step_rk4_with_matter_stages(
-            dt,
-            &MatterSources::vacuum(&x0.grid),
-            &config,
-            &values,
-        );
+        let stages =
+            x0.step_rk4_with_matter_stages(dt, &MatterSources::vacuum(&x0.grid), &config, &values);
         let connections = bssn_stage_connections::<D, N>(&stages, &config, &values);
 
         // stage purity across the coupling path as well
@@ -644,35 +630,35 @@ mod tests {
         let mut particles: Particles<D> = Particles::new();
         particles.spawn(0.0, start).unwrap();
 
-        particles.step_all_with_connections(0.0, &connections).unwrap();
+        particles
+            .step_all_with_connections(0.0, &connections)
+            .unwrap();
 
         let committed = particles.get(0).unwrap();
         let expected = staged_hand_rk4::<D, N>(&start, dt, &connections);
-        assert_eq!(committed.state.pos, expected.pos, "committed pos vs hand RK4");
-        assert_eq!(committed.state.vel, expected.vel, "committed vel vs hand RK4");
+        assert_eq!(
+            committed.state.pos, expected.pos,
+            "committed pos vs hand RK4"
+        );
+        assert_eq!(
+            committed.state.vel, expected.vel,
+            "committed vel vs hand RK4"
+        );
 
         // clock tracks the ADM-sized step exactly
         assert_eq!(committed.time, dt);
 
         // second chained step from the collapsed BSSN state
         let x1 = stages.collapse(&config, &values);
-        let stages2 = x1.step_rk4_with_matter_stages(
-            dt,
-            &MatterSources::vacuum(&x0.grid),
-            &config,
-            &values,
-        );
+        let stages2 =
+            x1.step_rk4_with_matter_stages(dt, &MatterSources::vacuum(&x0.grid), &config, &values);
         let connections2 = bssn_stage_connections::<D, N>(&stages2, &config, &values);
         particles
             .step_all_with_connections(committed.time, &connections2)
             .unwrap();
 
         let committed = particles.get(0).unwrap();
-        let expected2 = staged_hand_rk4::<D, N>(
-            &expected,
-            connections2.dt,
-            &connections2,
-        );
+        let expected2 = staged_hand_rk4::<D, N>(&expected, connections2.dt, &connections2);
         assert_eq!(committed.state.pos, expected2.pos, "step 2 pos vs hand RK4");
         assert_eq!(committed.state.vel, expected2.vel, "step 2 vel vs hand RK4");
         assert!((committed.time - 2.0 * dt).abs() < 1e-15);

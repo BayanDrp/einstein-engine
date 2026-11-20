@@ -16,13 +16,10 @@ fn vector_component<const D: usize>(v: &Field<Vector<D>, D>, m: usize) -> Field<
 }
 
 /// copy one (i, j) component of a tensor field into a scalar field
-fn tensor_component<const D: usize>(
-    t: &Field<Tensor2<D>, D>,
-    i: usize,
-    j: usize,
-) -> Field<f64, D> {
+fn tensor_component<const D: usize>(t: &Field<Tensor2<D>, D>, i: usize, j: usize) -> Field<f64, D> {
     let mut out = Field::zeros(t.grid.clone());
-    t.grid.for_each_index(|idx| out.set(idx, t.get(idx)[(i, j)]));
+    t.grid
+        .for_each_index(|idx| out.set(idx, t.get(idx)[(i, j)]));
     out
 }
 

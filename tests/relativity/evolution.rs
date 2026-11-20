@@ -27,7 +27,10 @@ fn zero_shift<const D: usize>(grid: Arc<Grid<D>>) -> Field<Vector<D>, D> {
     Field::new(grid.clone(), Vector::<D>::zero())
 }
 
-fn constant_tensor_field<const D: usize>(grid: Arc<Grid<D>>, f: impl Fn(usize, usize) -> f64) -> Field<Tensor2<D>, D> {
+fn constant_tensor_field<const D: usize>(
+    grid: Arc<Grid<D>>,
+    f: impl Fn(usize, usize) -> f64,
+) -> Field<Tensor2<D>, D> {
     let mut out: Field<Tensor2<D>, D> = Field::new(grid.clone(), Tensor2::<D>::zero());
     grid.for_each_index(|idx| {
         let mut t = Tensor2::<D>::zero();
@@ -109,9 +112,8 @@ fn spatial_rhs_flat_drifting_shift_cancels() {
     grid.for_each_index(|idx| shift.set(idx, Vector::new([b * grid.coords(idx)[0], 0.0])));
 
     // 2 alpha K_ij = L_beta gamma_ij = 2 b for the xx component
-    let extrinsic = constant_tensor_field::<2>(grid.clone(), |i, j| {
-        if i == 0 && j == 0 { b } else { 0.0 }
-    });
+    let extrinsic =
+        constant_tensor_field::<2>(grid.clone(), |i, j| if i == 0 && j == 0 { b } else { 0.0 });
 
     let config = BoundaryConfig::<2>::periodic();
     let values = BoundaryValues::<2>::zeros();
@@ -132,9 +134,7 @@ fn spatial_rhs_zero_shift_is_minus_two_alpha_k() {
     let spatial = flat_spatial::<2>(grid.clone());
     let lapse = constant_lapse::<2>(grid.clone(), 0.8);
     let shift = zero_shift::<2>(grid.clone());
-    let extrinsic = constant_tensor_field::<2>(grid.clone(), |i, j| {
-        if i == j { 1.5 } else { 0.0 }
-    });
+    let extrinsic = constant_tensor_field::<2>(grid.clone(), |i, j| if i == j { 1.5 } else { 0.0 });
 
     let config = BoundaryConfig::<2>::periodic();
     let values = BoundaryValues::<2>::zeros();
@@ -220,7 +220,11 @@ fn spatial_rhs_advection_term_alone() {
     let rhs = spatial_metric_rhs::<2>(&lapse, &shift, &spatial, &extrinsic, &config, &values);
     let at_one = *rhs.get([2, 1]); // x = 1.0, central derivative of 1 + x^2 is exact
     assert!((at_one[(0, 0)] - 0.0).abs() < 1e-12, "xx");
-    assert!((at_one[(1, 1)] - 2.0).abs() < 1e-12, "yy = 2x, got {}", at_one[(1, 1)]);
+    assert!(
+        (at_one[(1, 1)] - 2.0).abs() < 1e-12,
+        "yy = 2x, got {}",
+        at_one[(1, 1)]
+    );
 }
 // ---------------------------------------------------------------------
 // extrinsic curvature: d_t K_ij
@@ -239,7 +243,11 @@ fn k_rhs_minkowski_static_zero() {
     let values = BoundaryValues::<2>::zeros();
 
     let rhs = extrinsic_curvature_rhs::<2>(&lapse, &shift, &spatial, &extrinsic, &config, &values);
-    assert!(max_abs_interior(&rhs) < 1e-12, "got {}", max_abs_interior(&rhs));
+    assert!(
+        max_abs_interior(&rhs) < 1e-12,
+        "got {}",
+        max_abs_interior(&rhs)
+    );
 }
 
 // beta = 0, alpha = 1, flat slice (so R_ij = 0): the rhs is the
@@ -360,12 +368,12 @@ fn k_rhs_picks_up_spatial_ricci() {
 
     let rhs = extrinsic_curvature_rhs::<2>(&lapse, &shift, &spatial, &extrinsic, &config, &values);
     let t = *rhs.get([4, 1]); // x = 1.0
-    // For ds^2 = dx^2 + f(x)^2 dy^2 the Gaussian curvature is -f''/f, so
-    // R^(3) = -2 f''/f. With f = sqrt(1 + x^2), f'' = (1 + x^2)^(-3/2), giving
-    // R^(3) = -2/(1 + x^2)^2 = -1/2 at x = 1. In two dimensions
-    // R_ij = (R/2) gamma_ij, so R_xx = -1/4 and R_yy = -1/2 at x = 1,
-    // and multiplying by alpha = 2 gives -1/2 and -1.
-    // central differences carry O(h^2) error, hence the 0.05 tolerance.
+                              // For ds^2 = dx^2 + f(x)^2 dy^2 the Gaussian curvature is -f''/f, so
+                              // R^(3) = -2 f''/f. With f = sqrt(1 + x^2), f'' = (1 + x^2)^(-3/2), giving
+                              // R^(3) = -2/(1 + x^2)^2 = -1/2 at x = 1. In two dimensions
+                              // R_ij = (R/2) gamma_ij, so R_xx = -1/4 and R_yy = -1/2 at x = 1,
+                              // and multiplying by alpha = 2 gives -1/2 and -1.
+                              // central differences carry O(h^2) error, hence the 0.05 tolerance.
     assert!((t[(0, 0)] + 0.5).abs() < 0.05, "xx: got {}", t[(0, 0)]);
     assert!((t[(1, 1)] + 1.0).abs() < 0.05, "yy: got {}", t[(1, 1)]);
 }

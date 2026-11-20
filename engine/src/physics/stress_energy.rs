@@ -41,10 +41,7 @@ pub fn dust<const N: usize, const D: usize>(rho: &Field<f64, D>) -> StressEnergy
 ///
 /// T_mu_nu = rho * u_mu * u_nu
 
-pub fn dust_stress_energy<const N: usize>(
-    rho: f64,
-    u: [f64; N],
-) -> StressEnergy<N> {
+pub fn dust_stress_energy<const N: usize>(rho: f64, u: [f64; N]) -> StressEnergy<N> {
     let mut t = StressEnergy::zero();
 
     for mu in 0..N {
@@ -63,7 +60,10 @@ pub fn dust_stress_energy_field<const N: usize, const D: usize>(
     u_0: &Field<f64, D>,
     u_cov: &Field<Vector<D>, D>,
 ) -> StressEnergyField<N, D> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
     assert_eq!(u_0.grid.shape, rho.grid.shape);
     assert_eq!(u_cov.grid.shape, rho.grid.shape);
 

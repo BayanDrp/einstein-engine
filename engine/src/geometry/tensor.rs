@@ -42,7 +42,9 @@ impl<const D: usize> Tensor2<D> {
     }
 
     pub fn zero() -> Self {
-        Self { data: [[0.0; D]; D] }
+        Self {
+            data: [[0.0; D]; D],
+        }
     }
 }
 

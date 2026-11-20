@@ -1,12 +1,8 @@
-
 use std::f64::consts::PI;
 use std::sync::Arc;
 
 use crate::geometry::christoffel::spatial_christoffel_symbols;
-use crate::geometry::metric::{
-    LapseField,
-    ShiftField,
-};
+use crate::geometry::metric::{LapseField, ShiftField};
 use crate::geometry::ricci::{ricci_from_riemann, Ricci, RicciField};
 use crate::geometry::riemann::riemann_from_christoffel;
 use crate::geometry::tensor::{det, invert, Tensor2, Vector};
@@ -102,24 +98,12 @@ impl<const D: usize> BssnState<D> {
 
         Self {
             phi: Field::new(grid.clone(), 0.0),
-            conformal_metric: Field::new(
-                grid.clone(),
-                identity,
-            ),
+            conformal_metric: Field::new(grid.clone(), identity),
             trace_k: Field::new(grid.clone(), 0.0),
-            conformal_a: Field::new(
-                grid.clone(),
-                Tensor2::<D>::zero(),
-            ),
-            conformal_gamma: Field::new(
-                grid.clone(),
-                Vector::<D>::zero(),
-            ),
+            conformal_a: Field::new(grid.clone(), Tensor2::<D>::zero()),
+            conformal_gamma: Field::new(grid.clone(), Vector::<D>::zero()),
             lapse: Field::new(grid.clone(), 1.0),
-            shift: Field::new(
-                grid.clone(),
-                Vector::<D>::zero(),
-            ),
+            shift: Field::new(grid.clone(), Vector::<D>::zero()),
             grid,
         }
     }
@@ -187,11 +171,8 @@ impl<const D: usize> BssnState<D> {
         });
 
         // Gamma^i = gtilde^{jk} Gamma^i_jk(gtilde)
-        let gtilde_christoffel = spatial_christoffel_symbols(
-            &conformal_metric,
-            boundary,
-            boundary_values,
-        );
+        let gtilde_christoffel =
+            spatial_christoffel_symbols(&conformal_metric, boundary, boundary_values);
         let mut conformal_gamma = Field::new(grid.clone(), Vector::zero());
         grid.for_each_index(|idx| {
             let gtilde = *conformal_metric.get(idx);
@@ -310,16 +291,12 @@ impl<const D: usize> BssnState<D> {
         // pipeline the ADM equations use for the physical Ricci tensor. This
         // is exact by construction; the evolved Gamma^i is still evolved and
         // differentiated for the constraint/hyperbolicity structure.
-        let riemann = riemann_from_christoffel::<D, D>(
-            &gtilde_christoffel,
-            boundary,
-            boundary_values,
-        );
+        let riemann =
+            riemann_from_christoffel::<D, D>(&gtilde_christoffel, boundary, boundary_values);
         let ricc_direct: RicciField<D, D> = ricci_from_riemann::<D, D>(&riemann);
 
         // Gamma(n)^i recomputed from the current conformal metric
-        let mut gamma_n_field: Field<Vector<D>, D> =
-            Field::new(self.grid.clone(), Vector::zero());
+        let mut gamma_n_field: Field<Vector<D>, D> = Field::new(self.grid.clone(), Vector::zero());
         self.grid.for_each_index(|idx| {
             let gtilde = *self.conformal_metric.get(idx);
             let ginvt = invert(&matrix(&gtilde));
@@ -339,8 +316,7 @@ impl<const D: usize> BssnState<D> {
 
         // delta Gamma^i = evolved - recomputed; its symmetrized gradient is
         // the hyperbolic correction to the direct conformal Ricci
-        let mut delta_field: Field<Vector<D>, D> =
-            Field::new(self.grid.clone(), Vector::zero());
+        let mut delta_field: Field<Vector<D>, D> = Field::new(self.grid.clone(), Vector::zero());
         self.grid.for_each_index(|idx| {
             let mut d = Vector::zero();
             let ev = *self.conformal_gamma.get(idx);
@@ -652,7 +628,8 @@ impl<const D: usize> BssnState<D> {
             for i in 0..D {
                 for j in 0..D {
                     lap_alpha += ginvt[i][j]
-                        * (*hess_alpha[i][j].get(idx) + 2.0 * *d_phi[i].get(idx) * *d_alpha[j].get(idx));
+                        * (*hess_alpha[i][j].get(idx)
+                            + 2.0 * *d_phi[i].get(idx) * *d_alpha[j].get(idx));
                 }
             }
             let mut gamma_n_da = 0.0;
@@ -682,12 +659,14 @@ impl<const D: usize> BssnState<D> {
             let mut bracket = [[0.0f64; D]; D];
             for i in 0..D {
                 for j in 0..D {
-                    let mut b = -(*hess_alpha[i][j].get(idx)) + alpha * (rt.data[i][j] + rp.data[i][j]);
+                    let mut b =
+                        -(*hess_alpha[i][j].get(idx)) + alpha * (rt.data[i][j] + rp.data[i][j]);
                     for k in 0..D {
                         b += syms.data[k][i][j] * *d_alpha[k].get(idx);
                     }
-                    b += 2.0 * (*d_alpha[i].get(idx) * *d_phi[j].get(idx)
-                        + *d_alpha[j].get(idx) * *d_phi[i].get(idx));
+                    b += 2.0
+                        * (*d_alpha[i].get(idx) * *d_phi[j].get(idx)
+                            + *d_alpha[j].get(idx) * *d_phi[i].get(idx));
                     bracket[i][j] = b;
                 }
             }
@@ -713,8 +692,7 @@ impl<const D: usize> BssnState<D> {
                     let mut v = em4 * tf + alpha * (trk * at[(i, j)] - 2.0 * at_sq[i][j]);
                     // -e^{-4 phi} alpha 8 pi (S_ij - (1/3) gamma_ij s),
                     // gamma_ij = e^{4 phi} gtilde_ij physical
-                    v += -em4 * alpha * 8.0 * PI
-                        * (sij[(i, j)] - e4 * gtilde[(i, j)] * s_tr / 3.0);
+                    v += -em4 * alpha * 8.0 * PI * (sij[(i, j)] - e4 * gtilde[(i, j)] * s_tr / 3.0);
                     for k in 0..D {
                         v += at[(i, k)] * *d_beta[j][k].get(idx);
                         v += at[(j, k)] * *d_beta[i][k].get(idx);
@@ -995,7 +973,14 @@ impl<const D: usize> BssnState<D> {
         let a0 = y0.to_adm();
         let s1 = dust_sources::<4, D>(&m0, &a0.lapse, &a0.shift, &a0.gamma)?;
         let k1g = y0.rhs_with_matter(&s1, boundary, boundary_values);
-        let k1m = dust_rhs(&m0, &a0.lapse, &a0.shift, &a0.gamma, boundary, boundary_values);
+        let k1m = dust_rhs(
+            &m0,
+            &a0.lapse,
+            &a0.shift,
+            &a0.gamma,
+            boundary,
+            boundary_values,
+        );
 
         // k2 = F(Y_n + dt/2 * k1)
         let mut y2 = y0.axpy(0.5 * dt, &k1g);
@@ -1005,7 +990,14 @@ impl<const D: usize> BssnState<D> {
         let a2 = y2.to_adm();
         let s2 = dust_sources::<4, D>(&m2, &a2.lapse, &a2.shift, &a2.gamma)?;
         let k2g = y2.rhs_with_matter(&s2, boundary, boundary_values);
-        let k2m = dust_rhs(&m2, &a2.lapse, &a2.shift, &a2.gamma, boundary, boundary_values);
+        let k2m = dust_rhs(
+            &m2,
+            &a2.lapse,
+            &a2.shift,
+            &a2.gamma,
+            boundary,
+            boundary_values,
+        );
 
         // k3 = F(Y_n + dt/2 * k2)
         let mut y3 = y0.axpy(0.5 * dt, &k2g);
@@ -1015,7 +1007,14 @@ impl<const D: usize> BssnState<D> {
         let a3 = y3.to_adm();
         let s3 = dust_sources::<4, D>(&m3, &a3.lapse, &a3.shift, &a3.gamma)?;
         let k3g = y3.rhs_with_matter(&s3, boundary, boundary_values);
-        let k3m = dust_rhs(&m3, &a3.lapse, &a3.shift, &a3.gamma, boundary, boundary_values);
+        let k3m = dust_rhs(
+            &m3,
+            &a3.lapse,
+            &a3.shift,
+            &a3.gamma,
+            boundary,
+            boundary_values,
+        );
 
         // k4 = F(Y_n + dt * k3)
         let mut y4 = y0.axpy(dt, &k3g);
@@ -1025,7 +1024,14 @@ impl<const D: usize> BssnState<D> {
         let a4 = y4.to_adm();
         let s4 = dust_sources::<4, D>(&m4, &a4.lapse, &a4.shift, &a4.gamma)?;
         let k4g = y4.rhs_with_matter(&s4, boundary, boundary_values);
-        let k4m = dust_rhs(&m4, &a4.lapse, &a4.shift, &a4.gamma, boundary, boundary_values);
+        let k4m = dust_rhs(
+            &m4,
+            &a4.lapse,
+            &a4.shift,
+            &a4.gamma,
+            boundary,
+            boundary_values,
+        );
 
         Ok((
             BssnRk4Stages {
@@ -1069,12 +1075,8 @@ impl<const D: usize> BssnState<D> {
         boundary: &BoundaryConfig<D>,
         boundary_values: &BoundaryValues<D>,
     ) -> Result<(Self, DustState<D>), FourVelocityError> {
-        let (stages, dust_stages) = self.step_rk4_with_dust_stages(
-            dust,
-            dt,
-            boundary,
-            boundary_values,
-        )?;
+        let (stages, dust_stages) =
+            self.step_rk4_with_dust_stages(dust, dt, boundary, boundary_values)?;
 
         Ok((
             stages.collapse(boundary, boundary_values),
@@ -1084,7 +1086,8 @@ impl<const D: usize> BssnState<D> {
 
     fn add_scaled_in_place(&mut self, a: f64, rhs: &Self) {
         self.grid.for_each_index(|idx| {
-            self.phi.set(idx, *self.phi.get(idx) + a * *rhs.phi.get(idx));
+            self.phi
+                .set(idx, *self.phi.get(idx) + a * *rhs.phi.get(idx));
 
             let mut g = *self.conformal_metric.get(idx);
             let gr = *rhs.conformal_metric.get(idx);

@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use einstein_engine::geometry::metric::{
-        lower_shift, shift_squared, Metric, SpacetimeMetric,
-    };
+    use einstein_engine::geometry::metric::{lower_shift, shift_squared, Metric, SpacetimeMetric};
     use einstein_engine::geometry::tensor::{Tensor2, Vector};
 
     // gamma = [[2,1,0],[1,3,0],[0,0,1]], beta^j = (1,2,3)

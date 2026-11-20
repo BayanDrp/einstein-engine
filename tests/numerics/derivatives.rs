@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use einstein_engine::grid::boundary::{
-        BoundaryConfig, BoundaryKind, BoundaryValues,
-    };
+    use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryKind, BoundaryValues};
     use einstein_engine::grid::{Field, Grid};
     use einstein_engine::numerics::derivatives::central_partial;
     use std::sync::Arc;
@@ -22,7 +20,10 @@ mod tests {
         let mut f: Field<f64, 2> = Field::zeros(grid);
         for i in 0..3 {
             for j in 0..3 {
-                f.set([i, j], (i as f64 * 0.5) * (i as f64 * 0.5) + (j as f64 * 0.5) * (j as f64 * 0.5));
+                f.set(
+                    [i, j],
+                    (i as f64 * 0.5) * (i as f64 * 0.5) + (j as f64 * 0.5) * (j as f64 * 0.5),
+                );
             }
         }
         f

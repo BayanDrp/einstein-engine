@@ -218,9 +218,7 @@ fn particle_leaving_the_domain_stops_and_others_keep_stepping() {
 fn non_finite_time_aborts_without_committing() {
     let gamma = minkowski(8);
     let mut particles = Particles::<D>::new();
-    let rest = particles
-        .spawn(0.0, state([1.0; D], [0.0; D]))
-        .unwrap();
+    let rest = particles.spawn(0.0, state([1.0; D], [0.0; D])).unwrap();
     let missile = particles
         .spawn(f64::MAX, state([1.0; D], [0.0; D]))
         .unwrap();
@@ -326,7 +324,10 @@ fn schwarzschild_circular_orbit_pair_through_particles() {
     for i in 0..D {
         mirror_err = mirror_err.max((pa.state.pos[i] + pb.state.pos[i]).abs());
     }
-    assert!(mirror_err < 1e-12, "pair lost mirror symmetry: {mirror_err}");
+    assert!(
+        mirror_err < 1e-12,
+        "pair lost mirror symmetry: {mirror_err}"
+    );
 
     let ea = energy(pa.state.pos, pa.state.vel, mass);
     let eb = energy(pb.state.pos, pb.state.vel, mass);
@@ -365,9 +366,12 @@ fn schwarzschild_radial_infall_from_rest() {
         let speed = (p.state.vel[0] * p.state.vel[0]
             + p.state.vel[1] * p.state.vel[1]
             + p.state.vel[2] * p.state.vel[2])
-        .sqrt();
+            .sqrt();
         assert!(r < previous_r, "infall stalled: {r} >= {previous_r}");
-        assert!(speed > previous_speed, "did not speed up: {speed} <= {previous_speed}");
+        assert!(
+            speed > previous_speed,
+            "did not speed up: {speed} <= {previous_speed}"
+        );
         max_e_err = max_e_err.max((energy(p.state.pos, p.state.vel, mass) - e0).abs());
         previous_r = r;
         previous_speed = speed;

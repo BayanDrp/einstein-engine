@@ -166,7 +166,12 @@ pub fn extrinsic_curvature_rhs_with_matter<const D: usize>(
     for i in 0..D {
         let mut row = Vec::with_capacity(D);
         for j in 0..D {
-            row.push(central_partial(&grad_alpha[j], i, boundary, boundary_values));
+            row.push(central_partial(
+                &grad_alpha[j],
+                i,
+                boundary,
+                boundary_values,
+            ));
         }
         hessian.push(row);
     }
@@ -256,8 +261,8 @@ pub fn extrinsic_curvature_rhs_with_matter<const D: usize>(
                 let mut value = -nabla_nabla_alpha;
 
                 // + alpha (R_ij - 2 K_ik K^k_j + K K_ij)
-                value += alpha
-                    * (r_ij.data[i][j] - 2.0 * k_squared[(i, j)] + trace_k * k_ij[(i, j)]);
+                value +=
+                    alpha * (r_ij.data[i][j] - 2.0 * k_squared[(i, j)] + trace_k * k_ij[(i, j)]);
 
                 // + 4 pi alpha ((S - rho) gamma_ij - 2 S_ij): matter sources,
                 // whose trace is the d_t K matter term +4 pi alpha (S - 3 rho)

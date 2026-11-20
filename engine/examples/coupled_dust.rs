@@ -91,8 +91,7 @@ fn phase_a_coupled_flrw() {
     });
     total0 *= H.powi(3);
 
-    let mut out =
-        File::create("coupled_dust.csv").expect("cannot create output csv");
+    let mut out = File::create("coupled_dust.csv").expect("cannot create output csv");
     writeln!(
         out,
         "step,t,dt,min_alpha,max_abs_K,rho_mean,rho_min,max_abs_v,Hmax,Mmax,mass_rel_err"
@@ -105,14 +104,7 @@ fn phase_a_coupled_flrw() {
         let a = bstate.to_adm();
         let rho = dstate.rest_density(&a.gamma);
         let vel = dstate.velocity(&a.gamma);
-        let r = residuals(
-            &a.gamma,
-            &a.k,
-            &rho,
-            &zero_mom,
-            &config,
-            &values,
-        );
+        let r = residuals(&a.gamma, &a.k, &rho, &zero_mom, &config, &values);
         let mut min_alpha = f64::INFINITY;
         let mut max_k = 0.0f64;
         let mut rho_sum = 0.0f64;
@@ -173,14 +165,7 @@ fn phase_a_coupled_flrw() {
 
     let a = bstate.to_adm();
     let rho = dstate.rest_density(&a.gamma);
-    let r = residuals(
-        &a.gamma,
-        &a.k,
-        &rho,
-        &zero_mom,
-        &config,
-        &values,
-    );
+    let r = residuals(&a.gamma, &a.k, &rho, &zero_mom, &config, &values);
     assert!(
         r.hamiltonian_max < 1.0e-9,
         "constraint blow-up over the run: |H| = {}",
@@ -216,8 +201,7 @@ fn phase_b_transport() {
     let mut rho = Field::new(g.clone(), 0.0);
     g.for_each_index(|idx| {
         let c = g.coords(idx);
-        let r2 =
-            (c[0] - 1.0).powi(2) + (c[1] - 1.0).powi(2) + (c[2] - 1.0).powi(2);
+        let r2 = (c[0] - 1.0).powi(2) + (c[1] - 1.0).powi(2) + (c[2] - 1.0).powi(2);
         rho.set(idx, amp * (-r2 / (2.0 * sigma * sigma)).exp());
     });
     let mut vel_vec = Vector::<D>::zero();
@@ -232,10 +216,8 @@ fn phase_b_transport() {
     }
     let t = steps as f64 * dt;
 
-    let mut out = File::create("coupled_dust_transport.csv")
-        .expect("cannot create output csv");
-    writeln!(out, "t,profile_err,mass_rel_err,Hmax,max_abs_v")
-        .expect("cannot write csv header");
+    let mut out = File::create("coupled_dust_transport.csv").expect("cannot create output csv");
+    writeln!(out, "t,profile_err,mass_rel_err,Hmax,max_abs_v").expect("cannot write csv header");
 
     let w = 1.0 / (1.0 - vx * vx).sqrt();
     let mut worst = 0.0f64;
@@ -245,9 +227,7 @@ fn phase_b_transport() {
     let mut max_v_err = 0.0f64;
     g.for_each_index(|idx| {
         let c = g.coords(idx);
-        let r2 = (c[0] - 1.0 - vx * t).powi(2)
-            + (c[1] - 1.0).powi(2)
-            + (c[2] - 1.0).powi(2);
+        let r2 = (c[0] - 1.0 - vx * t).powi(2) + (c[1] - 1.0).powi(2) + (c[2] - 1.0).powi(2);
         let want = amp * w * (-r2 / (2.0 * sigma * sigma)).exp();
         worst = worst.max((state.densitized_rest_mass.get(idx) - want).abs());
         total += state.densitized_rest_mass.get(idx);
@@ -259,8 +239,7 @@ fn phase_b_transport() {
     // initial total recomputed from the analytic profile
     g.for_each_index(|idx| {
         let c = g.coords(idx);
-        let r2 =
-            (c[0] - 1.0).powi(2) + (c[1] - 1.0).powi(2) + (c[2] - 1.0).powi(2);
+        let r2 = (c[0] - 1.0).powi(2) + (c[1] - 1.0).powi(2) + (c[2] - 1.0).powi(2);
         total0 += amp * w * (-r2 / (2.0 * sigma * sigma)).exp();
     });
     let mass_err = ((total - total0) / total0).abs();

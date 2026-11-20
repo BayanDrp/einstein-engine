@@ -1,9 +1,4 @@
-use einstein_engine::geometry::metric::{
-    ExtrinsicCurvature,
-    LapseField,
-    ShiftField,
-    SliceMetric,
-};
+use einstein_engine::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftField, SliceMetric};
 use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
@@ -15,7 +10,10 @@ use std::sync::Arc;
 const D: usize = 2;
 
 fn config() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 fn flat(grid: Arc<Grid<D>>) -> SliceMetric<D> {
@@ -92,7 +90,14 @@ fn lapse_rhs_vanishes_on_minkowski_data() {
     let shift = zero_shift(grid.clone());
     let extrinsic: ExtrinsicCurvature<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
-    let rhs = lapse_rhs(&lapse, &shift, &spatial, &extrinsic, &boundary, &boundary_values);
+    let rhs = lapse_rhs(
+        &lapse,
+        &shift,
+        &spatial,
+        &extrinsic,
+        &boundary,
+        &boundary_values,
+    );
     assert!(worst(&rhs) < 1e-14, "got {}", worst(&rhs));
 }
 
@@ -115,7 +120,14 @@ fn lapse_rhs_is_minus_two_alpha_trace_k() {
         }
     });
 
-    let rhs = lapse_rhs(&lapse, &shift, &spatial, &extrinsic, &boundary, &boundary_values);
+    let rhs = lapse_rhs(
+        &lapse,
+        &shift,
+        &spatial,
+        &extrinsic,
+        &boundary,
+        &boundary_values,
+    );
     grid.for_each_index(|idx| {
         let got = *rhs.get(idx);
         assert!((got + 3.0).abs() < 1e-14, "at {idx:?}: got {got}");
@@ -157,7 +169,14 @@ fn lapse_rhs_traces_with_the_inverse_metric() {
         extrinsic.set(idx, k);
     });
 
-    let rhs = lapse_rhs(&lapse, &shift, &spatial, &extrinsic, &boundary, &boundary_values);
+    let rhs = lapse_rhs(
+        &lapse,
+        &shift,
+        &spatial,
+        &extrinsic,
+        &boundary,
+        &boundary_values,
+    );
 
     let mut worst_error = 0.0f64;
     let mut largest_expected = 0.0f64;
@@ -215,7 +234,14 @@ fn lapse_rhs_advects_along_the_shift() {
         shift.set(idx, Vector::new([b, 0.0]));
     });
 
-    let rhs = lapse_rhs(&lapse, &shift, &spatial, &extrinsic, &boundary, &boundary_values);
+    let rhs = lapse_rhs(
+        &lapse,
+        &shift,
+        &spatial,
+        &extrinsic,
+        &boundary,
+        &boundary_values,
+    );
     for i in 1..grid.shape[0] - 1 {
         for j in 0..grid.shape[1] {
             let got = *rhs.get([i, j]);

@@ -66,7 +66,11 @@ fn main() {
     // x spans 2.0 with 40 cells, so a wavelength of 1.0 fits exactly twice
     // and gets 40 cells: the profile is periodic, the wrap stencil sees no
     // jump, and k*h = 0.31 keeps numerical dispersion near 0.4%.
-    let grid = Arc::new(Grid::new([40, 8, 8], [0.05, 0.05, 0.05], [-1.0, -0.2, -0.2]));
+    let grid = Arc::new(Grid::new(
+        [40, 8, 8],
+        [0.05, 0.05, 0.05],
+        [-1.0, -0.2, -0.2],
+    ));
     let config = BoundaryConfig::<D>::periodic();
     let values = BoundaryValues::<D>::zeros();
 

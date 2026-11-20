@@ -1,17 +1,8 @@
-use crate::geometry::metric::{
-    ExtrinsicCurvature,
-    SliceMetric,
-};
+use crate::geometry::metric::{ExtrinsicCurvature, SliceMetric};
 use crate::geometry::tensor::Vector;
-use crate::grid::boundary::{
-    BoundaryConfig,
-    BoundaryValues,
-};
+use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
 use crate::grid::Field;
-use crate::relativity::constraints::{
-    hamiltonian_constraint,
-    momentum_constraint,
-};
+use crate::relativity::constraints::{hamiltonian_constraint, momentum_constraint};
 
 /// Maximum constraint violation over the whole spatial grid.
 ///
@@ -63,21 +54,10 @@ pub fn residuals<const D: usize>(
     assert_eq!(spatial.grid.shape, rho.grid.shape);
     assert_eq!(spatial.grid.shape, momentum.grid.shape);
 
-    let hamiltonian = hamiltonian_constraint(
-        spatial,
-        extrinsic,
-        rho,
-        boundary,
-        boundary_values,
-    );
+    let hamiltonian = hamiltonian_constraint(spatial, extrinsic, rho, boundary, boundary_values);
 
-    let momentum_field = momentum_constraint(
-        spatial,
-        extrinsic,
-        momentum,
-        boundary,
-        boundary_values,
-    );
+    let momentum_field =
+        momentum_constraint(spatial, extrinsic, momentum, boundary, boundary_values);
 
     ConstraintResidual {
         hamiltonian_max: max_abs_scalar(&hamiltonian),

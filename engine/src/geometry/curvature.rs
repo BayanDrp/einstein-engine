@@ -24,7 +24,8 @@ pub fn ricci_scalar<const D: usize, const N: usize>(
 
     lapse.grid.for_each_index(|idx| {
         // g_ab from the 3+1 data, then inverse g^ab
-        let g_ab = SpacetimeMetric::from_3plus1(*lapse.get(idx), &shift.get(idx), &spatial.get(idx));
+        let g_ab =
+            SpacetimeMetric::from_3plus1(*lapse.get(idx), &shift.get(idx), &spatial.get(idx));
         let g_ab = g_ab.as_matrix::<N>();
         let g_ab_up = invert(&g_ab);
 

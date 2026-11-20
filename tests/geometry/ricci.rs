@@ -58,8 +58,8 @@ fn ricci_curved_lapse() {
     assert!(close(c.data[0][0], 1.625)); // R_tt
     assert_eq!(c.data[0][1], 0.0); // R_tx
     assert_eq!(c.data[1][0], 0.0); // R_xt
-    // R_xx = R^t_xtx = -d/dx(alpha'/alpha) - (alpha'/alpha)^2,
-    // which is exactly -12/17 in floating point on this grid.
+                                   // R_xx = R^t_xtx = -d/dx(alpha'/alpha) - (alpha'/alpha)^2,
+                                   // which is exactly -12/17 in floating point on this grid.
     let expected_xx = 12.0 / 17.0;
     assert!(close(-c.data[1][1], expected_xx)); // R_xx
     assert_eq!(c.data[1][2], 0.0); // R_xy

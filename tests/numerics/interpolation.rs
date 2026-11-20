@@ -144,7 +144,11 @@ fn vector_tensor_affine_exact() {
     let v = interpolate_vector(&vf, p).unwrap();
     for i in 0..D {
         let want = 1.0 + (i as f64 + 1.0) * p[i];
-        assert!((v[i] - want).abs() < 1e-12, "v[{i}]: got {}, want {want}", v[i]);
+        assert!(
+            (v[i] - want).abs() < 1e-12,
+            "v[{i}]: got {}, want {want}",
+            v[i]
+        );
     }
     let t = interpolate_tensor(&tf, p).unwrap();
     for i in 0..D {
@@ -184,10 +188,7 @@ fn inverse_spacetime_metric_identity() {
                 s += g[a][c] * ginv[c][b];
             }
             let want = if a == b { 1.0 } else { 0.0 };
-            assert!(
-                (s - want).abs() < 1e-12,
-                "[{a}][{b}]: got {s}, want {want}"
-            );
+            assert!((s - want).abs() < 1e-12, "[{a}][{b}]: got {s}, want {want}");
         }
     }
 }
@@ -198,10 +199,6 @@ fn inverse_spacetime_metric_identity() {
 #[should_panic(expected = "singular matrix")]
 fn singular_metric_panics() {
     let spatial = Tensor2::<D>::zero();
-    let metric = SpacetimeMetric::from_3plus1(
-        0.0,
-        &Vector::<D>::zero(),
-        &spatial,
-    );
+    let metric = SpacetimeMetric::from_3plus1(0.0, &Vector::<D>::zero(), &spatial);
     let _ = inverse_spacetime_metric::<D, 4>(&metric);
 }

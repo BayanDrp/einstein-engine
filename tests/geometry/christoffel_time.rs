@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
     use einstein_engine::geometry::christoffel::{
-        christoffel_symbols,
-        christoffel_symbols_with_time_derivatives,
+        christoffel_symbols, christoffel_symbols_with_time_derivatives,
     };
     use einstein_engine::geometry::metric::{temporal_metric_derivative, SpacetimeMetric};
     use einstein_engine::geometry::tensor::{Tensor2, Vector};
@@ -41,17 +40,9 @@ mod tests {
         let config = BoundaryConfig::<3>::periodic();
         let values = BoundaryValues::<3>::zeros();
 
-        let static_g =
-            christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
+        let static_g = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
         let timed_g = christoffel_symbols_with_time_derivatives::<3, 4>(
-            &lapse,
-            &shift,
-            &spatial,
-            &dgamma_dt,
-            &dshift_dt,
-            &dlapse_dt,
-            &config,
-            &values,
+            &lapse, &shift, &spatial, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
         );
 
         for i in 0..5 {
@@ -84,26 +75,16 @@ mod tests {
         let t0 = 0.7;
         let h = 1e-4;
 
-        let g_plus = SpacetimeMetric::from_3plus1(
-            alpha_at(t0 + h),
-            &beta_at(t0 + h),
-            &gamma_at(t0 + h),
-        )
-        .as_matrix::<4>();
-        let g_minus = SpacetimeMetric::from_3plus1(
-            alpha_at(t0 - h),
-            &beta_at(t0 - h),
-            &gamma_at(t0 - h),
-        )
-        .as_matrix::<4>();
+        let g_plus =
+            SpacetimeMetric::from_3plus1(alpha_at(t0 + h), &beta_at(t0 + h), &gamma_at(t0 + h))
+                .as_matrix::<4>();
+        let g_minus =
+            SpacetimeMetric::from_3plus1(alpha_at(t0 - h), &beta_at(t0 - h), &gamma_at(t0 - h))
+                .as_matrix::<4>();
 
         // A_ij = d_t gamma_ij and B^i = d_t beta^i at t0: exact
         // derivatives of the linear profiles above
-        let a = Tensor2::new([
-            [0.5, 0.25, -0.1],
-            [0.25, 0.35, 0.15],
-            [-0.1, 0.15, 0.1],
-        ]);
+        let a = Tensor2::new([[0.5, 0.25, -0.1], [0.25, 0.35, 0.15], [-0.1, 0.15, 0.1]]);
         let b_dot = Vector::new([0.4, -0.6, 0.3]);
 
         let analytic = temporal_metric_derivative::<3, 4>(
@@ -168,14 +149,7 @@ mod tests {
         let values = BoundaryValues::<3>::zeros();
 
         let g = christoffel_symbols_with_time_derivatives::<3, 4>(
-            &lapse,
-            &shift,
-            &spatial,
-            &dgamma_dt,
-            &dshift_dt,
-            &dlapse_dt,
-            &config,
-            &values,
+            &lapse, &shift, &spatial, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
         );
 
         let flat = adot / a;
@@ -240,22 +214,8 @@ mod tests {
         let config = BoundaryConfig::<3>::periodic();
         let values = BoundaryValues::<3>::zeros();
 
-        let dgamma_dt = spatial_metric_rhs(
-            &lapse,
-            &shift,
-            &spatial,
-            &extrinsic,
-            &config,
-            &values,
-        );
-        let dlapse_dt = lapse_rhs(
-            &lapse,
-            &shift,
-            &spatial,
-            &extrinsic,
-            &config,
-            &values,
-        );
+        let dgamma_dt = spatial_metric_rhs(&lapse, &shift, &spatial, &extrinsic, &config, &values);
+        let dlapse_dt = lapse_rhs(&lapse, &shift, &spatial, &extrinsic, &config, &values);
         let dshift_dt = shift_rhs(&shift);
 
         // the evolvers must have produced the expected A_ij and alpha_dot
@@ -269,7 +229,12 @@ mod tests {
                             assert!(
                                 close(a[(c, d)], expected, 1e-12),
                                 "A[({},{})] at [{}, {}, {}] = {}",
-                                c, d, i, j, k, a[(c, d)]
+                                c,
+                                d,
+                                i,
+                                j,
+                                k,
+                                a[(c, d)]
                             );
                         }
                     }
@@ -286,14 +251,7 @@ mod tests {
         }
 
         let g = christoffel_symbols_with_time_derivatives::<3, 4>(
-            &lapse,
-            &shift,
-            &spatial,
-            &dgamma_dt,
-            &dshift_dt,
-            &dlapse_dt,
-            &config,
-            &values,
+            &lapse, &shift, &spatial, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
         );
 
         let flat = 0.6 / 2.0 / 1.44;
@@ -373,14 +331,7 @@ mod tests {
         let values = BoundaryValues::<3>::zeros();
 
         let g = christoffel_symbols_with_time_derivatives::<3, 4>(
-            &lapse,
-            &shift,
-            &spatial,
-            &dgamma_dt,
-            &dshift_dt,
-            &dlapse_dt,
-            &config,
-            &values,
+            &lapse, &shift, &spatial, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
         );
 
         let c = *g.get(target);
@@ -394,13 +345,17 @@ mod tests {
                         assert!(
                             c.data[aa][bb][cc].is_nan(),
                             "Gamma^[{}][{}][{}] should be NaN",
-                            aa, bb, cc
+                            aa,
+                            bb,
+                            cc
                         );
                     } else {
                         assert!(
                             c.data[aa][bb][cc].is_finite(),
                             "Gamma^[{}][{}][{}] should be finite",
-                            aa, bb, cc
+                            aa,
+                            bb,
+                            cc
                         );
                     }
                 }
@@ -427,8 +382,10 @@ mod tests {
         let other = Arc::new(Grid::new([3, 3, 3], [0.5, 0.5, 0.5], [0.0, 0.0, 0.0]));
         let lapse: Field<f64, 3> = Field::new(grid.clone(), 1.0);
         let shift: Field<Vector<3>, 3> = Field::new(grid.clone(), Vector::zero());
-        let spatial: Field<Tensor2<3>, 3> =
-            Field::new(grid.clone(), Tensor2::new([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]));
+        let spatial: Field<Tensor2<3>, 3> = Field::new(
+            grid.clone(),
+            Tensor2::new([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        );
         let dgamma_dt: Field<Tensor2<3>, 3> = Field::new(other.clone(), Tensor2::zero());
         let dshift_dt: Field<Vector<3>, 3> =
             Field::new(other.clone(), Vector::new([0.3, 0.0, 0.0]));
@@ -437,14 +394,7 @@ mod tests {
         let values = BoundaryValues::<3>::zeros();
 
         let _ = christoffel_symbols_with_time_derivatives::<3, 4>(
-            &lapse,
-            &shift,
-            &spatial,
-            &dgamma_dt,
-            &dshift_dt,
-            &dlapse_dt,
-            &config,
-            &values,
+            &lapse, &shift, &spatial, &dgamma_dt, &dshift_dt, &dlapse_dt, &config, &values,
         );
     }
 }

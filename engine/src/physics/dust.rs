@@ -88,10 +88,7 @@ impl<const D: usize> DustState<D> {
                     v_squared += vel[i] * gamma[(i, j)] * vel[j];
                 }
             }
-            assert!(
-                v_squared < 1.0,
-                "dust velocity must stay subluminal"
-            );
+            assert!(v_squared < 1.0, "dust velocity must stay subluminal");
 
             let w = 1.0 / (1.0 - v_squared).sqrt();
             conserved.set(idx, gdet.sqrt() * rho.get(idx) * w);
@@ -243,10 +240,5 @@ pub fn dust_sources<const N: usize, const D: usize>(
     let rho = dust.rest_density(spatial);
     let (u_0, u_cov) = dust.four_velocity(lapse, shift, spatial)?;
     let t = dust_stress_energy_field::<N, D>(&rho, &u_0, &u_cov);
-    Ok(matter_sources::<N, D>(
-        &t,
-        lapse,
-        shift,
-        spatial,
-    ))
+    Ok(matter_sources::<N, D>(&t, lapse, shift, spatial))
 }

@@ -173,15 +173,13 @@ pub fn dust_rhs<const D: usize>(
 
         let mut mv = Vector::<D>::zero();
         for j in 0..D {
-            let mut src = t00
-                * (-2.0 * alpha * *d_alpha[j].get(idx) + *d_betasq[j].get(idx));
+            let mut src = t00 * (-2.0 * alpha * *d_alpha[j].get(idx) + *d_betasq[j].get(idx));
             for k in 0..D {
                 src += 2.0 * t0[k] * *d_beta_cov[k][j].get(idx);
             }
             for k in 0..D {
                 for l in 0..D {
-                    let tkl = r * w * w * (vel[k] - beta[k] / alpha)
-                        * (vel[l] - beta[l] / alpha);
+                    let tkl = r * w * w * (vel[k] - beta[k] / alpha) * (vel[l] - beta[l] / alpha);
                     src += tkl * *d_gamma[k][l][j].get(idx);
                 }
             }

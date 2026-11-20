@@ -58,8 +58,7 @@ fn main() {
         shift: Field::new(grid.clone(), Vector::<D>::zero()),
     };
     let t_field = dust::<4, D>(&Field::new(grid.clone(), RHO0));
-    let src =
-        matter_sources::<4, D>(&t_field, &adm.lapse, &adm.shift, &adm.gamma);
+    let src = matter_sources::<4, D>(&t_field, &adm.lapse, &adm.shift, &adm.gamma);
 
     // --- t = 0 validation: exactly on-shell (up to roundoff)
     let r0 = residuals(
@@ -112,10 +111,8 @@ fn main() {
     // --- evolve with fixed sources, monitoring constraints
     let dt = 0.5 * H;
     let mut state = bssn;
-    let mut out =
-        File::create("matter_response.csv").expect("cannot create output csv");
-    writeln!(out, "step,t,min_alpha,max_abs_K,Hmax,Mmax")
-        .expect("cannot write csv header");
+    let mut out = File::create("matter_response.csv").expect("cannot create output csv");
+    writeln!(out, "step,t,min_alpha,max_abs_K,Hmax,Mmax").expect("cannot write csv header");
     println!("step | t     | min_alpha | max|K|   | |H|max  | |M|max");
 
     for step in 0..=STEPS {

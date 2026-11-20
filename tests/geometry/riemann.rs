@@ -1,32 +1,32 @@
 #[cfg(test)]
 mod tests {
-use einstein_engine::geometry::christoffel::christoffel_symbols;
-use einstein_engine::geometry::riemann::riemann_from_christoffel;
-use einstein_engine::geometry::tensor::{Tensor2, Vector};
-use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
-use einstein_engine::grid::{Field, Grid};
-use std::sync::Arc;
+    use einstein_engine::geometry::christoffel::christoffel_symbols;
+    use einstein_engine::geometry::riemann::riemann_from_christoffel;
+    use einstein_engine::geometry::tensor::{Tensor2, Vector};
+    use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
+    use einstein_engine::grid::{Field, Grid};
+    use std::sync::Arc;
 
-// flat Minkowski: alpha = 1, beta = 0, gamma = delta.
-// both Christoffel symbols and their derivatives vanish,
-// so every Riemann component is zero.
-#[test]
-fn riemann_flat_minkowski_all_zero() {
-    let grid = Arc::new(Grid::new([5, 5, 5], [0.5, 0.5, 0.5], [0.0, 0.0, 0.0]));
-    let lapse: Field<f64, 3> = Field::new(grid.clone(), 1.0);
-    let shift: Field<Vector<3>, 3> = Field::new(grid.clone(), Vector::zero());
-    let spatial: Field<Tensor2<3>, 3> = Field::new(
-        grid.clone(),
-        Tensor2::new([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-    );
-    let config = BoundaryConfig::<3>::periodic();
-    let values = BoundaryValues::<3>::zeros();
+    // flat Minkowski: alpha = 1, beta = 0, gamma = delta.
+    // both Christoffel symbols and their derivatives vanish,
+    // so every Riemann component is zero.
+    #[test]
+    fn riemann_flat_minkowski_all_zero() {
+        let grid = Arc::new(Grid::new([5, 5, 5], [0.5, 0.5, 0.5], [0.0, 0.0, 0.0]));
+        let lapse: Field<f64, 3> = Field::new(grid.clone(), 1.0);
+        let shift: Field<Vector<3>, 3> = Field::new(grid.clone(), Vector::zero());
+        let spatial: Field<Tensor2<3>, 3> = Field::new(
+            grid.clone(),
+            Tensor2::new([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        );
+        let config = BoundaryConfig::<3>::periodic();
+        let values = BoundaryValues::<3>::zeros();
 
-    let gamma = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
-    let r = riemann_from_christoffel(&gamma, &config, &values);
-    let c = *r.get([2, 2, 2]);
-    assert_eq!(c, Default::default());
-}
+        let gamma = christoffel_symbols::<3, 4>(&lapse, &shift, &spatial, &config, &values);
+        let r = riemann_from_christoffel(&gamma, &config, &values);
+        let c = *r.get([2, 2, 2]);
+        assert_eq!(c, Default::default());
+    }
 
     // curved slice: alpha = 1 + x^2/2 (so alpha' = x, alpha'' = 1),
     // beta = 0, gamma = delta. the only nonzero Christoffel symbols are

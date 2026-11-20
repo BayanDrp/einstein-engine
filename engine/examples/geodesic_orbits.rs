@@ -58,7 +58,10 @@ const MASS: f64 = 1.0;
 const ORBIT_H: f64 = 0.25;
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 /// Even-count grid centered on the hole whose lattice has no node at the
@@ -129,8 +132,8 @@ fn phase_a_static(out_dir: &Path) {
         run.steps = (run.revolutions * period / run.dt).round() as usize;
     }
 
-    let mut csv = File::create(out_dir.join("geodesic_orbits_static.csv"))
-        .expect("cannot create static csv");
+    let mut csv =
+        File::create(out_dir.join("geodesic_orbits_static.csv")).expect("cannot create static csv");
     writeln!(
         csv,
         "particle_id,label,revolutions,t,x,y,z,vx,vy,vz,r_areal,g_ww"
@@ -174,7 +177,11 @@ fn phase_a_static(out_dir: &Path) {
 
         let (psi4, alpha0) = metric_functions(MASS, rho);
         let gww0 = normalization(MASS, [rho, 0.0, 0.0], [0.0, rho * omega, 0.0]);
-        let kind = if gww0.abs() < 1e-6 { "null" } else { "timelike" };
+        let kind = if gww0.abs() < 1e-6 {
+            "null"
+        } else {
+            "timelike"
+        };
         println!("  g_ww(orbit) = {gww0:.6} ({kind}: psi^4 = {psi4:.4}, alpha = {alpha0:.4})");
 
         let g0 = circular_state::<D>(MASS, run.areal_r);
@@ -208,15 +215,14 @@ fn phase_a_static(out_dir: &Path) {
         }
 
         let p = particles.get(id).unwrap();
-        let closure = ((p.state.pos[0] - g0.pos[0]).powi(2)
-            + (p.state.pos[1] - g0.pos[1]).powi(2))
-            .sqrt();
+        let closure =
+            ((p.state.pos[0] - g0.pos[0]).powi(2) + (p.state.pos[1] - g0.pos[1]).powi(2)).sqrt();
         // error against the analytic arc endpoint x(T) = (rho cos omegaT,
         // rho sin omegaT) -- for sub-revolution arcs this, not the start
         // point, is the meaningful orbit-closure metric
         let end_err = ((p.state.pos[0] - rho * (omega * t).cos()).powi(2)
             + (p.state.pos[1] - rho * (omega * t).sin()).powi(2))
-            .sqrt();
+        .sqrt();
 
         println!(
             "  drift_areal = {drift_max:.3e}, phase_err = {phase_err_max:.3e} rad, g_ww drift = {gww_drift_max:.3e}, end_err = {end_err:.3e}, closure_full_rev = {closure:.3e}, |z| = {z_max:.3e}",
@@ -227,13 +233,25 @@ fn phase_a_static(out_dir: &Path) {
             "{} left the circle by {drift_max}",
             run.label
         );
-        assert!(phase_err_max < 0.02, "{} phase drifted {phase_err_max}", run.label);
+        assert!(
+            phase_err_max < 0.02,
+            "{} phase drifted {phase_err_max}",
+            run.label
+        );
         if gww0.abs() < 1e-6 {
             // photon arc: a quarter revolution, measured end_err 1.9e-2
-            assert!(end_err < 0.04, "{} missed the analytic endpoint: {end_err}", run.label);
+            assert!(
+                end_err < 0.04,
+                "{} missed the analytic endpoint: {end_err}",
+                run.label
+            );
         } else {
             // two full revolutions: measured end_err 4.2e-2, closure 4.6e-2
-            assert!(end_err < 0.07, "{} missed the reunion point: {end_err}", run.label);
+            assert!(
+                end_err < 0.07,
+                "{} missed the reunion point: {end_err}",
+                run.label
+            );
             assert!(closure < 0.07, "{} did not close: {closure}", run.label);
         }
         assert!(z_max < 1e-12, "{} left the orbital plane", run.label);
@@ -275,13 +293,7 @@ fn write_row(csv: &mut File, id: u64, run: &OrbitRun, t: f64, pos: [f64; D], vel
     writeln!(
         csv,
         "{id},{},{:.2},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6}",
-        run.label,
-        run.revolutions,
-        t,
-        pos[0], pos[1], pos[2],
-        vel[0], vel[1], vel[2],
-        r_areal,
-        gww,
+        run.label, run.revolutions, t, pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], r_areal, gww,
     )
     .expect("cannot write csv row");
 }
@@ -303,9 +315,7 @@ fn check_fixture_against_factory(grid: &Arc<Grid<D>>, fixture: &AdmState<D>) {
                         worst = worst.max((a[(i, j)] - b[(i, j)]).abs());
                     }
                 }
-                worst = worst.max(
-                    (*fixture.lapse.get(idx) - *factory.lapse.get(idx)).abs(),
-                );
+                worst = worst.max((*fixture.lapse.get(idx) - *factory.lapse.get(idx)).abs());
             });
             assert!(
                 worst == 0.0,
@@ -350,8 +360,7 @@ fn phase_b_stage_consistent(out_dir: &Path) {
     let mut t = 0.0_f64;
     for _ in 0..steps {
         let stages = state.step_rk4_stages(dt, &config, &values);
-        let connections =
-            bssn_stage_connections::<D, N>(&stages, &config, &values);
+        let connections = bssn_stage_connections::<D, N>(&stages, &config, &values);
         staged
             .step_all_with_connections(t, &connections)
             .expect("staged geodesic step");
@@ -367,7 +376,9 @@ fn phase_b_stage_consistent(out_dir: &Path) {
     let gamma0 =
         christoffel_symbols::<D, N>(&adm0.lapse, &adm0.shift, &adm0.gamma, &config, &values);
     for _ in 0..steps {
-        frozen.step_all::<N>(dt, &gamma0).expect("frozen geodesic step");
+        frozen
+            .step_all::<N>(dt, &gamma0)
+            .expect("frozen geodesic step");
     }
     let p_frozen = frozen.iter().next().unwrap();
 
@@ -381,8 +392,12 @@ fn phase_b_stage_consistent(out_dir: &Path) {
             csv,
             "0,{mode},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6}",
             steps as f64 * dt,
-            p.pos[0], p.pos[1], p.pos[2],
-            p.vel[0], p.vel[1], p.vel[2],
+            p.pos[0],
+            p.pos[1],
+            p.pos[2],
+            p.vel[0],
+            p.vel[1],
+            p.vel[2],
             speed,
         )
         .expect("cannot write row");

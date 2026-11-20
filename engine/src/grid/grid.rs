@@ -6,11 +6,7 @@ pub struct Grid<const NDIM: usize> {
 }
 
 impl<const NDIM: usize> Grid<NDIM> {
-    pub fn new(
-        shape: [usize; NDIM],
-        spacing: [f64; NDIM],
-        origin: [f64; NDIM],
-    ) -> Self {
+    pub fn new(shape: [usize; NDIM], spacing: [f64; NDIM], origin: [f64; NDIM]) -> Self {
         assert!(shape.iter().all(|&n| n > 0));
         assert!(spacing.iter().all(|&dx| dx > 0.0));
 

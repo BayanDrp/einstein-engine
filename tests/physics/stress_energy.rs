@@ -1,5 +1,5 @@
 use einstein_engine::grid::{Field, Grid};
-use einstein_engine::physics::stress_energy::{dust, StressEnergy , dust_stress_energy};
+use einstein_engine::physics::stress_energy::{dust, dust_stress_energy, StressEnergy};
 use std::sync::Arc;
 
 // no matter anywhere: every component of T_mu nu is zero.
@@ -57,9 +57,7 @@ fn dust_stress_energy_scales_linearly_with_density() {
 
     for mu in 0..4 {
         for nu in 0..4 {
-            assert!(
-                (t2.data[mu][nu] - 2.0 * t1.data[mu][nu]).abs() < 1e-12
-            );
+            assert!((t2.data[mu][nu] - 2.0 * t1.data[mu][nu]).abs() < 1e-12);
         }
     }
 }

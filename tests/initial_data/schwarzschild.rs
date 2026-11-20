@@ -15,7 +15,10 @@ const MASS: f64 = 1.0;
 const ORIGIN: [f64; D] = [0.5, 0.5, 0.5];
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 fn grid(shape: usize, h: f64) -> Arc<Grid<D>> {
@@ -301,7 +304,10 @@ fn static_slice_stays_bounded_over_a_long_run() {
     let (initial_h, initial_m) = window_constraints(&state, lo, hi);
     let initial_k = window_max_abs_k(&state, lo, hi);
 
-    assert!(initial_h > 0.0, "the data must start with a nonzero truncation residual");
+    assert!(
+        initial_h > 0.0,
+        "the data must start with a nonzero truncation residual"
+    );
     assert_eq!(initial_m, 0.0, "K = 0 at t = 0 gives exactly zero momentum");
     assert_eq!(initial_k, 0.0, "K = 0 at t = 0");
 
@@ -314,7 +320,10 @@ fn static_slice_stays_bounded_over_a_long_run() {
         let (hres, mres) = window_constraints(&state, lo, hi);
         worst_h = worst_h.max(hres);
 
-        assert!(hres.is_finite() && mres.is_finite(), "went non-finite at step {step}");
+        assert!(
+            hres.is_finite() && mres.is_finite(),
+            "went non-finite at step {step}"
+        );
 
         if step % 10 == 0 {
             println!(
@@ -330,9 +339,7 @@ fn static_slice_stays_bounded_over_a_long_run() {
     let (final_h, final_m) = window_constraints(&state, lo, hi);
     let ratio = worst_h / initial_h;
 
-    println!(
-        "t = 1: |H| = {final_h:.3e}, |M| = {final_m:.3e}; worst/initial = {ratio:.3}"
-    );
+    println!("t = 1: |H| = {final_h:.3e}, |M| = {final_m:.3e}; worst/initial = {ratio:.3}");
 
     // K stays only as large as truncation can inject it, so the momentum
     // residual is still tiny, and the Hamiltonian residual has not run away.
@@ -346,4 +353,3 @@ fn static_slice_stays_bounded_over_a_long_run() {
         "|H| grew by {ratio}x over the run; a static slice should stay at its truncation level"
     );
 }
-

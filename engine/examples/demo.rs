@@ -36,10 +36,16 @@ fn main() {
     println!("  lapse alpha          = {}", point.lapse);
     println!("  shift beta^          = {:?}", point.shift);
     println!("  lowered shift beta_i = {:?}", lower);
-    println!("  beta^2               = {}", shift_squared(&point.spatial, &point.shift));
+    println!(
+        "  beta^2               = {}",
+        shift_squared(&point.spatial, &point.shift)
+    );
     println!("  4-metric g_ab:");
     for row in point.spacetime().as_matrix::<4>() {
-        println!("    {:9.4} {:9.4} {:9.4} {:9.4}", row[0], row[1], row[2], row[3]);
+        println!(
+            "    {:9.4} {:9.4} {:9.4} {:9.4}",
+            row[0], row[1], row[2], row[3]
+        );
     }
 
     // --- christoffel.rs: symbols over the whole grid ---------------------
@@ -53,10 +59,7 @@ fn main() {
         for b in 0..4 {
             for d in 0..4 {
                 if c.data[a][b][d] != 0.0 {
-                    println!(
-                        "  Gamma^{}_{}{} = {:9.4}",
-                        a, b, d, c.data[a][b][d]
-                    );
+                    println!("  Gamma^{}_{}{} = {:9.4}", a, b, d, c.data[a][b][d]);
                 }
             }
         }

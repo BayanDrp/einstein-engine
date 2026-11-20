@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use einstein_engine::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftField, SliceMetric};
+    use einstein_engine::geometry::metric::{
+        ExtrinsicCurvature, LapseField, ShiftField, SliceMetric,
+    };
     use einstein_engine::geometry::tensor::{Tensor2, Vector};
     use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
     use einstein_engine::grid::{Field, Grid};
@@ -15,7 +17,10 @@ mod tests {
     }
 
     fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-        (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+        (
+            BoundaryConfig::<D>::periodic(),
+            BoundaryValues::<D>::zeros(),
+        )
     }
 
     // a slice that is not kinematically stationary: constant K with zero
@@ -111,14 +116,14 @@ mod tests {
             "y0 must be the enforced incoming state"
         );
         assert!(
-            states_equal(&stages.k1, &state.rhs_with_matter(&vacuum, &config, &values)),
+            states_equal(
+                &stages.k1,
+                &state.rhs_with_matter(&vacuum, &config, &values)
+            ),
             "k1 must be the rhs of y0"
         );
         assert!(
-            states_equal(
-                &stages.y2,
-                &state.axpy(0.5 * dt, &stages.k1)
-            ),
+            states_equal(&stages.y2, &state.axpy(0.5 * dt, &stages.k1)),
             "y2 must be y0 + dt/2 k1"
         );
         assert!(
@@ -129,10 +134,7 @@ mod tests {
             "k2 must be the rhs of y2"
         );
         assert!(
-            states_equal(
-                &stages.y3,
-                &state.axpy(0.5 * dt, &stages.k2)
-            ),
+            states_equal(&stages.y3, &state.axpy(0.5 * dt, &stages.k2)),
             "y3 must be y0 + dt/2 k2"
         );
         assert!(

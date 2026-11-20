@@ -66,9 +66,7 @@ pub fn four_velocity_covariant<const D: usize>(
         v_squared += velocity[i] * v_cov[i];
     }
 
-    if !v_squared.is_finite()
-        || !(0.0..1.0).contains(&v_squared)
-    {
+    if !v_squared.is_finite() || !(0.0..1.0).contains(&v_squared) {
         return Err(FourVelocityError::InvalidSpeed);
     }
 
@@ -176,7 +174,10 @@ pub fn matter_sources<const N: usize, const D: usize>(
     shift: &ShiftField<D>,
     spatial: &SliceMetric<D>,
 ) -> MatterSources<D> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
     assert_eq!(lapse.grid.shape, spatial.grid.shape);
     assert_eq!(shift.grid.shape, spatial.grid.shape);
     assert_eq!(stress_energy.grid.shape, spatial.grid.shape);

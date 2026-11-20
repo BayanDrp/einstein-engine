@@ -22,14 +22,9 @@ pub fn hamiltonian_constraint<const D: usize>(
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> HamiltonianConstraintField<D> {
-    let spatial_ricci = spatial_ricci_scalar(
-        spatial,
-        boundary,
-        boundary_values,
-    );
+    let spatial_ricci = spatial_ricci_scalar(spatial, boundary, boundary_values);
 
-    let mut out =
-        Field::zeros(spatial.grid.clone());
+    let mut out = Field::zeros(spatial.grid.clone());
 
     spatial.grid.for_each_index(|idx| {
         let gamma = spatial.get(idx);
@@ -64,21 +59,13 @@ pub fn hamiltonian_constraint<const D: usize>(
             for j in 0..D {
                 for p in 0..D {
                     for q in 0..D {
-                        k_squared +=
-                            k[(i, j)]
-                            * gamma_inv[i][p]
-                            * gamma_inv[j][q]
-                            * k[(p, q)];
+                        k_squared += k[(i, j)] * gamma_inv[i][p] * gamma_inv[j][q] * k[(p, q)];
                     }
                 }
             }
         }
 
-        let h =
-            r3
-            + trace_k * trace_k
-            - k_squared
-            - 16.0 * std::f64::consts::PI * rho;
+        let h = r3 + trace_k * trace_k - k_squared - 16.0 * std::f64::consts::PI * rho;
 
         out.set(idx, h);
     });
@@ -111,8 +98,7 @@ fn mixed_extrinsic<const D: usize>(
         for upper in 0..D {
             for lower in 0..D {
                 for m in 0..D {
-                    mixed[(upper, lower)] +=
-                        gamma_inv[upper][m] * k[(m, lower)];
+                    mixed[(upper, lower)] += gamma_inv[upper][m] * k[(m, lower)];
                 }
             }
         }
@@ -122,7 +108,6 @@ fn mixed_extrinsic<const D: usize>(
 
     out
 }
-
 
 fn extrinsic_trace<const D: usize>(
     spatial: &SliceMetric<D>,

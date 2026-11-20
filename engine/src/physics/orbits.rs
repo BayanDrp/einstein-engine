@@ -94,7 +94,10 @@ use crate::physics::geodesics::GeodesicState;
 /// and are only ever used as grid data, never as orbit geometry.
 pub fn metric_functions(mass: f64, rho: f64) -> (f64, f64) {
     assert!(rho > 0.0, "isotropic radius must be positive");
-    assert!(mass.is_finite() && mass > 0.0, "mass must be positive and finite");
+    assert!(
+        mass.is_finite() && mass > 0.0,
+        "mass must be positive and finite"
+    );
 
     let psi = 1.0 + mass / (2.0 * rho);
     let psi4 = psi * psi * psi * psi;
@@ -109,8 +112,14 @@ pub fn metric_functions(mass: f64, rho: f64) -> (f64, f64) {
 /// Requires `r > 2M` (outside the horizon), which every circular orbit
 /// satisfies.
 pub fn isotropic_radius(mass: f64, areal: f64) -> f64 {
-    assert!(mass.is_finite() && mass > 0.0, "mass must be positive and finite");
-    assert!(areal.is_finite() && areal > 2.0 * mass, "areal radius must exceed 2M");
+    assert!(
+        mass.is_finite() && mass > 0.0,
+        "mass must be positive and finite"
+    );
+    assert!(
+        areal.is_finite() && areal > 2.0 * mass,
+        "areal radius must exceed 2M"
+    );
 
     (areal - mass + (areal * (areal - 2.0 * mass)).sqrt()) / 2.0
 }
@@ -118,7 +127,10 @@ pub fn isotropic_radius(mass: f64, areal: f64) -> f64 {
 /// Areal radius `r = psi^2 rho` of an isotropic radius `rho` (rho > 0).
 pub fn areal_radius(mass: f64, iso: f64) -> f64 {
     assert!(iso > 0.0, "isotropic radius must be positive");
-    assert!(mass.is_finite() && mass > 0.0, "mass must be positive and finite");
+    assert!(
+        mass.is_finite() && mass > 0.0,
+        "mass must be positive and finite"
+    );
 
     let psi = 1.0 + mass / (2.0 * iso);
     iso * psi * psi
@@ -128,7 +140,10 @@ pub fn areal_radius(mass: f64, iso: f64) -> f64 {
 /// geodesic at areal radius `r` (the derivation above), for any `r > 3M`
 /// timelike, any `r >= 3M` null.
 pub fn circular_omega(mass: f64, areal: f64) -> f64 {
-    assert!(mass.is_finite() && mass > 0.0, "mass must be positive and finite");
+    assert!(
+        mass.is_finite() && mass > 0.0,
+        "mass must be positive and finite"
+    );
     assert!(
         areal.is_finite() && areal >= 3.0 * mass,
         "circular geodesics exist for r >= 3M (null at exactly 3M, timelike beyond); got r = {areal} M={mass}"
@@ -193,7 +208,10 @@ pub fn areal_of_state<const D: usize>(mass: f64, pos: [f64; D]) -> f64 {
 /// wherever the connection must be exact rather than interpolated
 /// (temporal-order studies: spatial representation fixed and exact).
 pub fn analytic_christoffel<const N: usize>(mass: f64, pos: [f64; 3]) -> Christoffel<N> {
-    assert!(N == 4, "the 3D isotropic slice has spacetime dim 4, got N = {N}");
+    assert!(
+        N == 4,
+        "the 3D isotropic slice has spacetime dim 4, got N = {N}"
+    );
     let rho2 = pos.iter().map(|x| x * x).sum::<f64>();
     assert!(rho2 > 0.0, "no finite symbols at the puncture itself");
     let rho = rho2.sqrt();
@@ -202,8 +220,7 @@ pub fn analytic_christoffel<const N: usize>(mass: f64, pos: [f64; 3]) -> Christo
     let psi4 = psi * psi * psi * psi;
 
     // directional derivatives of the two scalar fields
-    let psi_axis: [f64; 3] =
-        core::array::from_fn(|m| -mass * pos[m] / (2.0 * rho * rho * rho));
+    let psi_axis: [f64; 3] = core::array::from_fn(|m| -mass * pos[m] / (2.0 * rho * rho * rho));
     let alpha_axis: [f64; 3] =
         core::array::from_fn(|m| mass * pos[m] / (rho * rho * rho * psi * psi));
 
@@ -215,8 +232,8 @@ pub fn analytic_christoffel<const N: usize>(mass: f64, pos: [f64; 3]) -> Christo
                 let dkj = f64::from(k == j);
                 let dki = f64::from(k == i);
                 let dij = f64::from(i == j);
-                g.data[1 + k][1 + i][1 + j] = 2.0 / psi
-                    * (dkj * psi_axis[i] + dki * psi_axis[j] - dij * psi_axis[k]);
+                g.data[1 + k][1 + i][1 + j] =
+                    2.0 / psi * (dkj * psi_axis[i] + dki * psi_axis[j] - dij * psi_axis[k]);
             }
         }
     }
@@ -244,12 +261,8 @@ mod tests {
             );
         }
         // documented closed bodies
-        assert!(
-            (isotropic_radius(1.0, 3.0) - (2.0 + 3f64.sqrt()) / 2.0).abs() < 1e-12
-        );
-        assert!(
-            (isotropic_radius(1.0, 6.0) - (5.0 + 2.0 * 6f64.sqrt()) / 2.0).abs() < 1e-12
-        );
+        assert!((isotropic_radius(1.0, 3.0) - (2.0 + 3f64.sqrt()) / 2.0).abs() < 1e-12);
+        assert!((isotropic_radius(1.0, 6.0) - (5.0 + 2.0 * 6f64.sqrt()) / 2.0).abs() < 1e-12);
     }
 
     // the character line g_ww = -(1 - 3M/r): null at 3M, -1/2 at 6M

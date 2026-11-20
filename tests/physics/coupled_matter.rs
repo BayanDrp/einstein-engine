@@ -27,18 +27,18 @@
 //! 9. the frozen-geometry dust stepper the stage steppers reuse for
 //!    transport-only work is unaffected by the refactor (M3 pin).
 
+use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::grid::boundary::{BoundaryConfig, BoundaryValues};
 use einstein_engine::grid::{Field, Grid};
 use einstein_engine::numerics::rk4::AdmState;
 use einstein_engine::physics::dust::{dust_sources, DustState};
 use einstein_engine::physics::dust_evolution::{dust_rhs, dust_step_rk4};
 use einstein_engine::physics::geodesics::{
-    bssn_stage_connections, geodesic_stages_step_rk4, GeodesicState, stage_connections,
+    bssn_stage_connections, geodesic_stages_step_rk4, stage_connections, GeodesicState,
     StageConnections,
 };
 use einstein_engine::physics::particles::{ParticleError, ParticleStatus, Particles};
 use einstein_engine::relativity::bssn::BssnState;
-use einstein_engine::geometry::tensor::{Tensor2, Vector};
 use einstein_engine::validation::constraints::residuals;
 use std::sync::Arc;
 
@@ -46,7 +46,10 @@ const D: usize = 3;
 const N: usize = 4;
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 /// FLRW-like homogeneous patch: flat uniform metric with curvature K
@@ -103,13 +106,12 @@ fn flrw_wave_dust() -> DustState<D> {
     let mut rho = Field::new(g.clone(), 0.0);
     g.for_each_index(|idx| {
         let x = idx[0] as f64 * g.spacing[0] + g.origin[0];
-        rho.set(idx, rho0 * (1.0 + 0.25 * (2.0 * std::f64::consts::PI * x).sin()));
+        rho.set(
+            idx,
+            rho0 * (1.0 + 0.25 * (2.0 * std::f64::consts::PI * x).sin()),
+        );
     });
-    DustState::from_primitives(
-        &rho,
-        &Field::new(g.clone(), Vector::<D>::zero()),
-        &gamma,
-    )
+    DustState::from_primitives(&rho, &Field::new(g.clone(), Vector::<D>::zero()), &gamma)
 }
 
 /// Flat metric with a spatially varying contraction rate
@@ -195,8 +197,10 @@ fn vector_max_diff(a: &Field<Vector<D>, D>, b: &Field<Vector<D>, D>) -> f64 {
 /// difference in the sign of zero does not count; the steppers are judged
 /// on values, not on sign-of-zero bits)
 fn dust_max_diff(a: &DustState<D>, b: &DustState<D>) -> f64 {
-    scalar_max_diff(&a.densitized_rest_mass, &b.densitized_rest_mass)
-        .max(vector_max_diff(&a.densitized_momentum, &b.densitized_momentum))
+    scalar_max_diff(&a.densitized_rest_mass, &b.densitized_rest_mass).max(vector_max_diff(
+        &a.densitized_momentum,
+        &b.densitized_momentum,
+    ))
 }
 
 fn dust_total(dust: &DustState<D>) -> f64 {
@@ -300,7 +304,10 @@ fn adm_dust_stage_pairs_are_self_consistent() {
 
     // non-vacuity for the geometry side: the stage states move and the
     // geometry rates differ, so the pairwise fidelity means something
-    assert!(adm_max_diff(&stages.y2, &stages.y0) > 0.0, "the stage states never moved");
+    assert!(
+        adm_max_diff(&stages.y2, &stages.y0) > 0.0,
+        "the stage states never moved"
+    );
     assert!(
         adm_max_diff(&stages.k1, &stages.k2) > 0.0,
         "geometry rates identical across stages: source rebuild not exercised"
@@ -397,13 +404,7 @@ fn fresh_sources_leave_a_measurable_stamp() {
     let frozen = dust_sources::<N, D>(&dust, &adm.lapse, &adm.shift, &adm.gamma).unwrap();
     let frozeng = adm.step_rk4_with_matter(dt, &frozen, &config, &values);
     let frozend = dust_step_rk4(
-        &dust,
-        dt,
-        &adm.lapse,
-        &adm.shift,
-        &adm.gamma,
-        &config,
-        &values,
+        &dust, dt, &adm.lapse, &adm.shift, &adm.gamma, &config, &values,
     );
 
     let dg = adm_max_diff(&staged, &frozeng);
@@ -441,9 +442,7 @@ fn fresh_sources_leave_a_measurable_stamp() {
     assert_eq!(dust_max_diff(&staged_dust, &collapsed_dust), 0.0);
 
     // and the classic facade must produce the same pair bitwise
-    let (classic, classic_dust) = adm
-        .step_rk4_with_dust(&dust, dt, &config, &values)
-        .unwrap();
+    let (classic, classic_dust) = adm.step_rk4_with_dust(&dust, dt, &config, &values).unwrap();
     assert_eq!(adm_max_diff(&staged, &classic), 0.0);
     assert_eq!(dust_max_diff(&staged_dust, &classic_dust), 0.0);
 }
@@ -506,8 +505,7 @@ fn particles_synchronize_with_the_bssn_dust_stage_bundles() {
     let (stages, _) = bssn
         .step_rk4_with_dust_stages(&dust, dt, &config, &values)
         .unwrap();
-    let conns: StageConnections<N, D> =
-        bssn_stage_connections::<D, N>(&stages, &config, &values);
+    let conns: StageConnections<N, D> = bssn_stage_connections::<D, N>(&stages, &config, &values);
 
     let start = GeodesicState::<D> {
         pos: [0.7, 0.8, 0.9],
@@ -547,7 +545,10 @@ fn particles_synchronize_with_the_bssn_dust_stage_bundles() {
     );
     let unchanged = particles.get(id).unwrap();
     assert_eq!(unchanged.time, dt, "a refused step must not move the clock");
-    assert_eq!(unchanged.state, after_state, "a refused step must not move the state");
+    assert_eq!(
+        unchanged.state, after_state,
+        "a refused step must not move the state"
+    );
 }
 
 // 7. Boundary policy on the dust-coupled bundles: a particle whose step
@@ -596,18 +597,24 @@ fn boundary_stop_policy_holds_on_dust_coupled_data() {
     assert_eq!(calm.time, dt);
     assert_eq!(calm.history.len(), 2);
     assert_eq!(rocket.status, ParticleStatus::StoppedAtBoundary);
-    assert_eq!(rocket.time, 0.0, "a stopped particle keeps its last timestamp");
+    assert_eq!(
+        rocket.time, 0.0,
+        "a stopped particle keeps its last timestamp"
+    );
     assert_eq!(rocket.state.pos, [0.7, 0.8, 0.9]);
     assert_eq!(rocket.state.vel, [40.0, 0.0, 0.0]);
-    assert_eq!(rocket.history.len(), 1, "no sample is committed for the aborted step");
+    assert_eq!(
+        rocket.history.len(),
+        1,
+        "no sample is committed for the aborted step"
+    );
 
     // the stopped particle is now exempt from the clock: the batch can
     // step again and the rocket stays put
     let (stages2, _) = bssn
         .step_rk4_with_dust_stages(&dust, dt, &config, &values)
         .unwrap();
-    let conns2: StageConnections<N, D> =
-        bssn_stage_connections::<D, N>(&stages2, &config, &values);
+    let conns2: StageConnections<N, D> = bssn_stage_connections::<D, N>(&stages2, &config, &values);
     particles.step_all_with_connections(dt, &conns2).unwrap();
     let rocket = particles.get(rocket_id).unwrap();
     assert_eq!(rocket.time, 0.0, "stopped particles must not multiply-step");
@@ -628,9 +635,7 @@ fn flrw_coupled_runs_hold_conservation_and_constraints() {
     let (_, mut adm, mut dust) = flrw();
     let total0 = dust_total(&dust);
     for _ in 0..10 {
-        let (n, nm) = adm
-            .step_rk4_with_dust(&dust, dt, &config, &values)
-            .unwrap();
+        let (n, nm) = adm.step_rk4_with_dust(&dust, dt, &config, &values).unwrap();
         adm = n;
         dust = nm;
     }
@@ -700,13 +705,7 @@ fn frozen_geometry_dust_transport_is_unchanged() {
     let mut state = dust;
     for _ in 0..4 {
         state = dust_step_rk4(
-            &state,
-            0.03125,
-            &adm.lapse,
-            &adm.shift,
-            &adm.gamma,
-            &config,
-            &values,
+            &state, 0.03125, &adm.lapse, &adm.shift, &adm.gamma, &config, &values,
         );
     }
 
@@ -717,6 +716,9 @@ fn frozen_geometry_dust_transport_is_unchanged() {
             assert_eq!(p[i], 0.0, "rest dust gained momentum [{i}]");
         }
         let d = *state.densitized_rest_mass.get(idx);
-        assert!(d.is_finite() && d > 0.0, "densitized mass left the positive reals");
+        assert!(
+            d.is_finite() && d > 0.0,
+            "densitized mass left the positive reals"
+        );
     });
 }

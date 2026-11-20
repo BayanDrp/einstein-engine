@@ -14,7 +14,10 @@ const D: usize = 3;
 const ORIGIN: [f64; D] = [0.5, 0.5, 0.5];
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 fn grid(n: usize, h: f64) -> Arc<Grid<D>> {
@@ -47,7 +50,8 @@ fn max_abs_diff_tensor(a: &Field<Tensor2<D>, D>, b: &Field<Tensor2<D>, D>) -> f6
 
 fn max_scalar_field(a: &Field<f64, D>) -> f64 {
     let mut worst = 0.0f64;
-    a.grid.for_each_index(|idx| worst = worst.max(a.get(idx).abs()));
+    a.grid
+        .for_each_index(|idx| worst = worst.max(a.get(idx).abs()));
     worst
 }
 
@@ -93,9 +97,12 @@ fn admixtures(grid: Arc<Grid<D>>) -> AdmState<D> {
         for i in 0..D {
             g[(i, i)] = 1.0 + 0.1 * (2.0 * std::f64::consts::PI * c[i]).cos();
         }
-        g[(0, 1)] = 0.05 * (2.0 * std::f64::consts::PI * x).sin() * (2.0 * std::f64::consts::PI * y).sin();
-        g[(0, 2)] = 0.05 * (2.0 * std::f64::consts::PI * x).sin() * (2.0 * std::f64::consts::PI * z).sin();
-        g[(1, 2)] = 0.05 * (2.0 * std::f64::consts::PI * y).sin() * (2.0 * std::f64::consts::PI * z).sin();
+        g[(0, 1)] =
+            0.05 * (2.0 * std::f64::consts::PI * x).sin() * (2.0 * std::f64::consts::PI * y).sin();
+        g[(0, 2)] =
+            0.05 * (2.0 * std::f64::consts::PI * x).sin() * (2.0 * std::f64::consts::PI * z).sin();
+        g[(1, 2)] =
+            0.05 * (2.0 * std::f64::consts::PI * y).sin() * (2.0 * std::f64::consts::PI * z).sin();
         g[(1, 0)] = g[(0, 1)];
         g[(2, 0)] = g[(0, 2)];
         g[(2, 1)] = g[(1, 2)];
@@ -271,14 +278,14 @@ fn rippled(grid: Arc<Grid<D>>) -> AdmState<D> {
         g[(0, 0)] = 1.0 + eps * (2.0 * std::f64::consts::PI * x).cos();
         g[(1, 1)] = 1.0 + eps * (2.0 * std::f64::consts::PI * y).cos();
         g[(2, 2)] = 1.0 + eps * (2.0 * std::f64::consts::PI * z).cos();
-        g[(0, 1)] = eps * (2.0 * std::f64::consts::PI * x).sin()
-            * (2.0 * std::f64::consts::PI * y).sin();
+        g[(0, 1)] =
+            eps * (2.0 * std::f64::consts::PI * x).sin() * (2.0 * std::f64::consts::PI * y).sin();
         g[(1, 0)] = g[(0, 1)];
-        g[(1, 2)] = eps * (2.0 * std::f64::consts::PI * y).sin()
-            * (2.0 * std::f64::consts::PI * z).sin();
+        g[(1, 2)] =
+            eps * (2.0 * std::f64::consts::PI * y).sin() * (2.0 * std::f64::consts::PI * z).sin();
         g[(2, 1)] = g[(1, 2)];
-        g[(0, 2)] = eps * (2.0 * std::f64::consts::PI * z).sin()
-            * (2.0 * std::f64::consts::PI * x).sin();
+        g[(0, 2)] =
+            eps * (2.0 * std::f64::consts::PI * z).sin() * (2.0 * std::f64::consts::PI * x).sin();
         g[(2, 0)] = g[(0, 2)];
 
         let mut kk = Tensor2::zero();
@@ -470,7 +477,13 @@ fn schwarzschild_slice_is_a_bssn_fixed_point() {
     let mut worst_gamma = 0.0f64;
     g.for_each_index(|idx| {
         let c = g.coords(idx);
-        if !(c[0] >= 0.75 && c[0] <= 1.25 && c[1] >= 0.75 && c[1] <= 1.25 && c[2] >= 0.75 && c[2] <= 1.25) {
+        if !(c[0] >= 0.75
+            && c[0] <= 1.25
+            && c[1] >= 0.75
+            && c[1] <= 1.25
+            && c[2] >= 0.75
+            && c[2] <= 1.25)
+        {
             return;
         }
 

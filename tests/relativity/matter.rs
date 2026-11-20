@@ -39,7 +39,10 @@ fn zero_curvature(g: &Arc<Grid<D>>) -> Field<Tensor2<D>, D> {
 }
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 fn matrix(t: &Tensor2<D>) -> [[f64; D]; D] {
@@ -103,8 +106,8 @@ fn rippled(grid: Arc<Grid<D>>) -> AdmState<D> {
         g[(0, 0)] = 1.0 + eps * (2.0 * std::f64::consts::PI * x).cos();
         g[(1, 1)] = 1.0 + eps * (2.0 * std::f64::consts::PI * y).cos();
         g[(2, 2)] = 1.0 + eps * (2.0 * std::f64::consts::PI * z).cos();
-        g[(0, 1)] = eps * (2.0 * std::f64::consts::PI * x).sin()
-            * (2.0 * std::f64::consts::PI * y).sin();
+        g[(0, 1)] =
+            eps * (2.0 * std::f64::consts::PI * x).sin() * (2.0 * std::f64::consts::PI * y).sin();
         g[(1, 0)] = g[(0, 1)];
 
         let mut kk = Tensor2::zero();
@@ -167,8 +170,7 @@ fn minkowski_four_velocity() {
     let mut velocity = Vector::<D>::zero();
     velocity[0] = 0.6;
 
-    let (u_0, u_cov) =
-        four_velocity_covariant(alpha, &beta, &spatial_metric, &velocity).unwrap();
+    let (u_0, u_cov) = four_velocity_covariant(alpha, &beta, &spatial_metric, &velocity).unwrap();
 
     assert!((u_0 + 1.25).abs() < 1e-12);
     assert!((u_cov[0] - 0.75).abs() < 1e-12);
@@ -246,14 +248,13 @@ fn matter_sources_shift_terms_cancel() {
     vel_vec[0] = 0.6;
     let vel = Field::new(g.clone(), vel_vec);
 
-    let (u_0, u_cov) =
-        einstein_engine::relativity::matter::four_velocity_covariant_field(
-            &unit_lapse(&g),
-            &shift,
-            &flat_metric(&g),
-            &vel,
-        )
-        .unwrap();
+    let (u_0, u_cov) = einstein_engine::relativity::matter::four_velocity_covariant_field(
+        &unit_lapse(&g),
+        &shift,
+        &flat_metric(&g),
+        &vel,
+    )
+    .unwrap();
     let t = dust_stress_energy_field::<4, D>(&Field::new(g.clone(), 2.0), &u_0, &u_cov);
     let src = matter_sources::<4, D>(&t, &unit_lapse(&g), &shift, &flat_metric(&g));
 
@@ -370,10 +371,16 @@ fn zero_matter_reproduces_vacuum_rhs() {
     let br = bssn.rhs(&config, &values);
     let bm = bssn.rhs_with_matter(&vac, &config, &values);
     assert_eq!(max_diff_scalar(&br.phi, &bm.phi), 0.0);
-    assert_eq!(max_diff_tensor(&br.conformal_metric, &bm.conformal_metric), 0.0);
+    assert_eq!(
+        max_diff_tensor(&br.conformal_metric, &bm.conformal_metric),
+        0.0
+    );
     assert_eq!(max_diff_scalar(&br.trace_k, &bm.trace_k), 0.0);
     assert_eq!(max_diff_tensor(&br.conformal_a, &bm.conformal_a), 0.0);
-    assert_eq!(max_diff_vector(&br.conformal_gamma, &bm.conformal_gamma), 0.0);
+    assert_eq!(
+        max_diff_vector(&br.conformal_gamma, &bm.conformal_gamma),
+        0.0
+    );
     assert_eq!(max_diff_scalar(&br.lapse, &bm.lapse), 0.0);
 }
 
@@ -385,12 +392,7 @@ fn adm_matter_increment_matches_analytic() {
     let (config, values) = periodic();
     let g = grid();
     let adm = rippled(g.clone());
-    let src = matter_sources::<4, D>(
-        &small_stress(&g),
-        &adm.lapse,
-        &adm.shift,
-        &adm.gamma,
-    );
+    let src = matter_sources::<4, D>(&small_stress(&g), &adm.lapse, &adm.shift, &adm.gamma);
 
     let r0 = adm.rhs(&config, &values);
     let r1 = adm.rhs_with_matter(&src, &config, &values);
@@ -410,7 +412,9 @@ fn adm_matter_increment_matches_analytic() {
         let k1 = r1.k.get(idx);
         for i in 0..D {
             for j in 0..D {
-                let want = alpha * 4.0 * std::f64::consts::PI
+                let want = alpha
+                    * 4.0
+                    * std::f64::consts::PI
                     * ((s - rho) * gamma[(i, j)] - 2.0 * sij[(i, j)]);
                 worst = worst.max((k1[(i, j)] - k0[(i, j)] - want).abs());
             }
@@ -428,19 +432,17 @@ fn bssn_matter_increments_match_analytic() {
     let (config, values) = periodic();
     let g = grid();
     let adm = rippled(g.clone());
-    let src = matter_sources::<4, D>(
-        &small_stress(&g),
-        &adm.lapse,
-        &adm.shift,
-        &adm.gamma,
-    );
+    let src = matter_sources::<4, D>(&small_stress(&g), &adm.lapse, &adm.shift, &adm.gamma);
     let bssn = BssnState::from_adm(&adm, &config, &values);
 
     let r0 = bssn.rhs(&config, &values);
     let r1 = bssn.rhs_with_matter(&src, &config, &values);
 
     assert_eq!(max_diff_scalar(&r0.phi, &r1.phi), 0.0);
-    assert_eq!(max_diff_tensor(&r0.conformal_metric, &r1.conformal_metric), 0.0);
+    assert_eq!(
+        max_diff_tensor(&r0.conformal_metric, &r1.conformal_metric),
+        0.0
+    );
     assert_eq!(max_diff_scalar(&r0.lapse, &r1.lapse), 0.0);
 
     let pi = std::f64::consts::PI;
@@ -469,12 +471,10 @@ fn bssn_matter_increments_match_analytic() {
         let a1 = r1.conformal_a.get(idx);
         for i in 0..D {
             for j in 0..D {
-                let want = -em4 * alpha * 8.0 * pi
-                    * (sij[(i, j)] - e4 * gtilde[(i, j)] * s / 3.0);
+                let want = -em4 * alpha * 8.0 * pi * (sij[(i, j)] - e4 * gtilde[(i, j)] * s / 3.0);
                 worst_a = worst_a.max((a1[(i, j)] - a0[(i, j)] - want).abs());
-                worst_sym = worst_sym.max(
-                    ((a1[(i, j)] - a0[(i, j)]) - (a1[(j, i)] - a0[(j, i)])).abs(),
-                );
+                worst_sym =
+                    worst_sym.max(((a1[(i, j)] - a0[(i, j)]) - (a1[(j, i)] - a0[(j, i)])).abs());
             }
         }
 
@@ -509,12 +509,7 @@ fn bssn_adm_k_identity_holds_with_matter() {
     let g = grid();
     let mut adm = rippled(g.clone());
     adm.shift = Field::new(g.clone(), Vector::<D>::zero());
-    let src = matter_sources::<4, D>(
-        &small_stress(&g),
-        &adm.lapse,
-        &adm.shift,
-        &adm.gamma,
-    );
+    let src = matter_sources::<4, D>(&small_stress(&g), &adm.lapse, &adm.shift, &adm.gamma);
 
     let adm_rhs = adm.rhs_with_matter(&src, &config, &values);
     let bssn = BssnState::from_adm(&adm, &config, &values);
@@ -594,7 +589,12 @@ fn dust_total(dust: &DustState<D>) -> f64 {
     total * h.powi(3)
 }
 
-fn window_h(bssn: &BssnState<D>, dust: &DustState<D>, config: &BoundaryConfig<D>, values: &BoundaryValues<D>) -> (f64, f64) {
+fn window_h(
+    bssn: &BssnState<D>,
+    dust: &DustState<D>,
+    config: &BoundaryConfig<D>,
+    values: &BoundaryValues<D>,
+) -> (f64, f64) {
     use einstein_engine::physics::dust::dust_sources;
     let a = bssn.to_adm();
     let src = dust_sources::<4, D>(dust, &a.lapse, &a.shift, &a.gamma).unwrap();
@@ -661,8 +661,7 @@ fn frozen_sources_drift_where_coupled_holds() {
     let bssn = BssnState::from_adm(&adm, &config, &values);
 
     let a0 = bssn.to_adm();
-    let frozen =
-        dust_sources::<4, D>(&dust, &a0.lapse, &a0.shift, &a0.gamma).unwrap();
+    let frozen = dust_sources::<4, D>(&dust, &a0.lapse, &a0.shift, &a0.gamma).unwrap();
 
     let dt = 0.5 * 0.125;
     let mut state = bssn;
@@ -739,9 +738,7 @@ fn coupled_step_uses_fresh_sources() {
     let mut worst_k = 0.0f64;
     let mut worst_a = 0.0f64;
     cb.grid.for_each_index(|idx| {
-        worst_k = worst_k.max(
-            (cb.trace_k.get(idx) - fb.trace_k.get(idx)).abs(),
-        );
+        worst_k = worst_k.max((cb.trace_k.get(idx) - fb.trace_k.get(idx)).abs());
         let ca = cb.conformal_a.get(idx);
         let fa = fb.conformal_a.get(idx);
         for i in 0..D {

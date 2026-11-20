@@ -1,11 +1,6 @@
 use std::sync::Arc;
 
-use crate::geometry::metric::{
-    ExtrinsicCurvature,
-    LapseField,
-    ShiftField,
-    SliceMetric,
-};
+use crate::geometry::metric::{ExtrinsicCurvature, LapseField, ShiftField, SliceMetric};
 use crate::geometry::tensor::Tensor2;
 use crate::grid::{Field, Grid};
 use crate::numerics::rk4::AdmState;
@@ -48,25 +43,17 @@ pub fn schwarzschild<const D: usize>(
     });
 
     if invalid_radius {
-        return Err(
-            "Every grid point must satisfy r > M/2",
-        );
+        return Err("Every grid point must satisfy r > M/2");
     }
 
-    let mut gamma: SliceMetric<D> =
-        Field::new(grid.clone(), Tensor2::<D>::zero());
+    let mut gamma: SliceMetric<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
-    let k: ExtrinsicCurvature<D> =
-        Field::new(grid.clone(), Tensor2::<D>::zero());
+    let k: ExtrinsicCurvature<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
-    let mut lapse: LapseField<D> =
-        Field::zeros(grid.clone());
+    let mut lapse: LapseField<D> = Field::zeros(grid.clone());
 
     let shift: ShiftField<D> =
-        Field::new(
-            grid.clone(),
-            crate::geometry::tensor::Vector::<D>::zero(),
-        );
+        Field::new(grid.clone(), crate::geometry::tensor::Vector::<D>::zero());
 
     grid.for_each_index(|idx| {
         let coords = grid.coords(idx);
@@ -95,7 +82,6 @@ pub fn schwarzschild<const D: usize>(
         lapse,
         shift,
     })
-  
 }
 
 /// The same isotropic Schwarzschild slice as [`schwarzschild`], but without
@@ -147,20 +133,14 @@ pub fn isotropic_fields<const D: usize>(
         return Err("Every grid point must have rho > 0 (psi diverges at the puncture)");
     }
 
-    let mut gamma: SliceMetric<D> =
-        Field::new(grid.clone(), Tensor2::<D>::zero());
+    let mut gamma: SliceMetric<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
-    let k: ExtrinsicCurvature<D> =
-        Field::new(grid.clone(), Tensor2::<D>::zero());
+    let k: ExtrinsicCurvature<D> = Field::new(grid.clone(), Tensor2::<D>::zero());
 
-    let mut lapse: LapseField<D> =
-        Field::zeros(grid.clone());
+    let mut lapse: LapseField<D> = Field::zeros(grid.clone());
 
     let shift: ShiftField<D> =
-        Field::new(
-            grid.clone(),
-            crate::geometry::tensor::Vector::<D>::zero(),
-        );
+        Field::new(grid.clone(), crate::geometry::tensor::Vector::<D>::zero());
 
     grid.for_each_index(|idx| {
         let coords = grid.coords(idx);

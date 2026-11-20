@@ -11,10 +11,15 @@ const D: usize = 3;
 const N: usize = 4;
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
-fn minkowski_gamma(grid: &Arc<Grid<D>>) -> einstein_engine::geometry::christoffel::ChristoffelField<N, D> {
+fn minkowski_gamma(
+    grid: &Arc<Grid<D>>,
+) -> einstein_engine::geometry::christoffel::ChristoffelField<N, D> {
     let mut identity = Tensor2::<D>::zero();
     for i in 0..D {
         identity[(i, i)] = 1.0;
@@ -98,7 +103,11 @@ fn rk4_converges_fourth_order() {
     conn.data[0][0][0] = 0.5;
     let gamma = Field::new(g, conn);
 
-    fn final_x(dt: f64, steps: usize, gamma: &einstein_engine::geometry::christoffel::ChristoffelField<N, D>) -> f64 {
+    fn final_x(
+        dt: f64,
+        steps: usize,
+        gamma: &einstein_engine::geometry::christoffel::ChristoffelField<N, D>,
+    ) -> f64 {
         let mut s = GeodesicState {
             pos: [1.0, 1.0, 1.0],
             vel: [0.1, 0.0, 0.0],
@@ -143,10 +152,7 @@ fn minkowski_norm_preserved() {
         state = geodesic_step_rk4::<D, N>(&state, 0.05, &gamma).unwrap();
         // u^mu = W (1, v^i) on unit lapse, zero shift, flat space
         let norm = -w * w + w * w * (state.vel[0] * state.vel[0]);
-        assert!(
-            (norm + 1.0).abs() < 1e-12,
-            "norm drifted to {norm}"
-        );
+        assert!((norm + 1.0).abs() < 1e-12, "norm drifted to {norm}");
     }
 }
 
@@ -184,11 +190,7 @@ fn schwarzschild_circular_orbit() {
     let n = 24;
     let h = 1.0;
     let half = (n as f64 - 1.0) * h / 2.0;
-    let g = Arc::new(Grid::new(
-        [n; D],
-        [h; D],
-        [-half, -half, -half],
-    ));
+    let g = Arc::new(Grid::new([n; D], [h; D], [-half, -half, -half]));
     let adm = schwarzschild::<D>(g.clone(), mass).expect("valid data");
     let (config, values) = periodic();
     let gamma = christoffel_symbols::<D, N>(&adm.lapse, &adm.shift, &adm.gamma, &config, &values);
@@ -210,7 +212,10 @@ fn schwarzschild_circular_orbit() {
     let rhs = geodesic_rhs::<D, N>(&state, &interpolate_christoffel(&gamma, state.pos).unwrap());
     let v2 = omega * omega * r0 * r0;
     let want_ar = -v2 / r0;
-    println!("circular-orbit radial accel a_r = {:.3e}, want {:.3e}", rhs.vel[0], want_ar);
+    println!(
+        "circular-orbit radial accel a_r = {:.3e}, want {:.3e}",
+        rhs.vel[0], want_ar
+    );
     assert!(
         (rhs.vel[0] - want_ar).abs() < 1.0e-3,
         "radial accel should be centripetal: got {}, want {want_ar}",
@@ -245,7 +250,7 @@ fn schwarzschild_circular_orbit() {
         let r = (state.pos[0] * state.pos[0]
             + state.pos[1] * state.pos[1]
             + state.pos[2] * state.pos[2])
-        .sqrt();
+            .sqrt();
         max_r_err = max_r_err.max((r - r0).abs());
         max_z = max_z.max(state.pos[2].abs());
         let (e, nrm) = energy_norm(state.pos, state.vel);

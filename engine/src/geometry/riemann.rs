@@ -69,7 +69,10 @@ pub fn riemann_from_christoffel<const D: usize, const N: usize>(
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> RiemannField<N, D> {
-    assert!(N == D || N == D + 1, "N must be D or D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D || N == D + 1,
+        "N must be D or D + 1, got N = {N}, D = {D}"
+    );
     // d_gamma[mu][nu][rho][k] = d/dx^k of Gamma^mu_nu rho, k over spatial dims
     let mut d_gamma = Vec::new();
     for mu in 0..N {

@@ -1,11 +1,7 @@
 use std::sync::Arc;
 
 use super::metric::{
-    temporal_metric_derivative,
-    LapseField,
-    ShiftField,
-    SliceMetric,
-    SpacetimeMetric,
+    temporal_metric_derivative, LapseField, ShiftField, SliceMetric, SpacetimeMetric,
 };
 use super::tensor::{invert, Tensor2, Vector};
 use crate::grid::boundary::{BoundaryConfig, BoundaryValues};
@@ -123,7 +119,10 @@ fn christoffel_symbols_inner<const D: usize, const N: usize>(
     boundary: &BoundaryConfig<D>,
     boundary_values: &BoundaryValues<D>,
 ) -> ChristoffelField<N, D> {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
 
     if let Some((dgamma_dt, dshift_dt, dlapse_dt)) = temporal {
         assert!(
@@ -283,8 +282,7 @@ pub fn spatial_christoffel_symbols<const D: usize>(
                     let mut s = 0.0;
                     for l in 0..D {
                         s += ginv[i][l]
-                            * (*dgamma[l][j][k].get(idx)
-                                + *dgamma[l][k][j].get(idx)
+                            * (*dgamma[l][j][k].get(idx) + *dgamma[l][k][j].get(idx)
                                 - *dgamma[j][k][l].get(idx));
                     }
                     symbols.data[i][j][k] = 0.5 * s;

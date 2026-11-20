@@ -94,7 +94,10 @@ impl<const D: usize> SpacetimeMetric<D> {
     /// indices 1..=D are spatial. N is the spacetime dimension,
     /// so pass N = D + 1 (3 for 2+1, 4 for 3+1).
     pub fn as_matrix<const N: usize>(&self) -> [[f64; N]; N] {
-        assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+        assert!(
+            N == D + 1,
+            "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+        );
         let mut g = [[0.0f64; N]; N];
         g[0][0] = self.tt;
         for i in 1..=D {
@@ -139,7 +142,10 @@ pub fn temporal_metric_derivative<const D: usize, const N: usize>(
     dshift_dt: &Vector<D>,
     dlapse_dt: f64,
 ) -> [[f64; N]; N] {
-    assert!(N == D + 1, "spacetime dim N must be D + 1, got N = {N}, D = {D}");
+    assert!(
+        N == D + 1,
+        "spacetime dim N must be D + 1, got N = {N}, D = {D}"
+    );
 
     let mut dg = [[0.0f64; N]; N];
 

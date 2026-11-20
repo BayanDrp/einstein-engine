@@ -18,7 +18,7 @@ mod tests {
         let grid = Grid::new([2, 3, 4], [1.0, 2.0, 3.0], [0.0, 0.0, 0.0]);
         assert_eq!(grid.coords([0, 0, 0]), [0.0, 0.0, 0.0]);
         assert_eq!(grid.coords([1, 2, 3]), [1.0, 4.0, 9.0]);
-    } 
+    }
     #[test]
     fn grid_contains() {
         let grid = Grid::new([2, 3, 4], [1.0, 2.0, 3.0], [0.0, 0.0, 0.0]);
@@ -60,7 +60,5 @@ mod tests {
     #[should_panic]
     fn grid_rejects_bad_spacing() {
         let _ = Grid::new([2, 3, 4], [1.0, 0.0, 3.0], [0.0, 0.0, 0.0]);
-    }                                                                                                                  
-}                                                                                                                                                                               
-
-
+    }
+}

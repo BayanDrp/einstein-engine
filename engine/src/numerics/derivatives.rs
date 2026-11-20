@@ -23,50 +23,38 @@ pub fn forward_partial<const NDIM: usize>(
         if idx[axis] + 1 < shape[axis] {
             let mut next = idx;
             next[axis] += 1;
-            
-            
+
             let current_value = *field.get(idx);
             // boundary conditions override the normal stencil
-            if boundary.lower[axis] == BoundaryKind::Dirichlet
-                && idx[axis] == 0
-            {
+            if boundary.lower[axis] == BoundaryKind::Dirichlet && idx[axis] == 0 {
                 let mut next = idx;
                 next[axis] += 1;
 
                 let next_value = *field.get(next);
                 let boundary_value = boundary_values.lower[axis];
 
-                let derivative =
-                    (next_value - boundary_value)
-                    / spacing[axis];
+                let derivative = (next_value - boundary_value) / spacing[axis];
 
                 result.set(idx, derivative);
                 continue;
             }
 
-            if boundary.upper[axis] == BoundaryKind::Dirichlet
-                && idx[axis] == shape[axis] - 1
-            {
+            if boundary.upper[axis] == BoundaryKind::Dirichlet && idx[axis] == shape[axis] - 1 {
                 let mut prev = idx;
                 prev[axis] -= 1;
 
                 let prev_value = *field.get(prev);
                 let boundary_value = boundary_values.upper[axis];
 
-                let derivative =
-                    (boundary_value - prev_value)
-                    / spacing[axis];
+                let derivative = (boundary_value - prev_value) / spacing[axis];
 
                 result.set(idx, derivative);
                 continue;
             }
-            
+
             let next_value = *field.get(next);
 
-            
-
-            let derivative =
-                (next_value - current_value) / spacing[axis];
+            let derivative = (next_value - current_value) / spacing[axis];
 
             result.set(idx, derivative);
         }
@@ -139,7 +127,9 @@ pub fn central_partial<const NDIM: usize>(
         } else {
             // upper edge
             match boundary.upper[axis] {
-                BoundaryKind::Dirichlet => (boundary_values.upper[axis] - at(field, idx, n - 2)) / dx,
+                BoundaryKind::Dirichlet => {
+                    (boundary_values.upper[axis] - at(field, idx, n - 2)) / dx
+                }
                 BoundaryKind::Periodic => (at(field, idx, 0) - at(field, idx, n - 2)) / (2.0 * dx),
                 BoundaryKind::Neumann => (at(field, idx, n - 1) - at(field, idx, n - 2)) / dx,
             }

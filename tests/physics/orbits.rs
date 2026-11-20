@@ -41,7 +41,10 @@ const N: usize = 4;
 const MASS: f64 = 1.0;
 
 fn periodic() -> (BoundaryConfig<D>, BoundaryValues<D>) {
-    (BoundaryConfig::<D>::periodic(), BoundaryValues::<D>::zeros())
+    (
+        BoundaryConfig::<D>::periodic(),
+        BoundaryValues::<D>::zeros(),
+    )
 }
 
 /// even-count grid centered on the puncture: nodes at odd multiples of h/2
@@ -85,10 +88,8 @@ fn circular_initial_conditions_match_kepler_balance() {
         let rho = state.pos[0];
         let omega = circular_omega(MASS, areal);
 
-        let rhs = geodesic_rhs::<D, N>(
-            &state,
-            &interpolate_christoffel(&gamma, state.pos).unwrap(),
-        );
+        let rhs =
+            geodesic_rhs::<D, N>(&state, &interpolate_christoffel(&gamma, state.pos).unwrap());
         let ax_exact = -rho * omega * omega;
         println!(
             "areal r = {areal}, h = {h}: a_x = {:.6}, exact = {ax_exact:.6}, a_y = {:.3e}, a_z = {:.3e}",
@@ -148,7 +149,10 @@ fn fixture_is_engine_data_where_the_factory_runs() {
         assert!(psi4.is_finite());
         max_psi = max_psi.max(psi4);
     });
-    println!("fine photon grid: n = {:?}, max psi^4 = {max_psi:.3e}", grid.shape);
+    println!(
+        "fine photon grid: n = {:?}, max psi^4 = {max_psi:.3e}",
+        grid.shape
+    );
 }
 
 /// the M2 orbit test's grid: +-11.5 box, unit spacing, one node per unit
@@ -193,14 +197,20 @@ fn photon_sphere_orbit_tracks_analytic_arc() {
         assert!(state.pos[2].abs() < 1e-12, "left the orbital plane");
     }
 
-    let end_err = plane_dist(state.pos, [rho * (omega * t).cos(), rho * (omega * t).sin(), 0.0]);
+    let end_err = plane_dist(
+        state.pos,
+        [rho * (omega * t).cos(), rho * (omega * t).sin(), 0.0],
+    );
     println!(
         "photon arc: steps = {steps}, drift = {drift_max:.3e}, phase = {phase_max:.3e}, |g_ww| = {gww_max:.3e}, end_err = {end_err:.3e}"
     );
 
     assert!(drift_max < 0.04, "photon arc drifted {drift_max}");
     assert!(phase_max < 0.02, "photon arc phase drifted {phase_max}");
-    assert!(gww_max < 0.008, "null condition violated: |g_ww| = {gww_max}");
+    assert!(
+        gww_max < 0.008,
+        "null condition violated: |g_ww| = {gww_max}"
+    );
     assert!(end_err < 0.04, "photon arc end error {end_err}");
 }
 
@@ -249,9 +259,7 @@ fn isco_orbit_closes_over_two_revolutions() {
     let q = steps / 4;
     let early: f64 = drift_seq[..q].iter().cloned().fold(0.0, f64::max);
     let late: f64 = drift_seq[steps - q..].iter().cloned().fold(0.0, f64::max);
-    println!(
-        "ISCO 2 rev: steps = {steps}, early quarter drift = {early:.3e}, late = {late:.3e}"
-    );
+    println!("ISCO 2 rev: steps = {steps}, early quarter drift = {early:.3e}, late = {late:.3e}");
     assert!(
         late < early * 8.0 + 1e-12,
         "radius error grew secularly: early {early:.3e} -> late {late:.3e}"
@@ -448,7 +456,11 @@ fn spatial_error_converges_second_order() {
         }
         plane_dist(
             state.pos,
-            [rho * (omega * dt * steps as f64).cos(), rho * (omega * dt * steps as f64).sin(), 0.0],
+            [
+                rho * (omega * dt * steps as f64).cos(),
+                rho * (omega * dt * steps as f64).sin(),
+                0.0,
+            ],
         )
     };
 
@@ -529,7 +541,11 @@ fn example_runs_and_writes_reproducible_csv() {
         assert_eq!(lines.next().unwrap(), header, "{name}: unexpected schema");
         let numeric: HashSet<usize> = numeric_cols.iter().cloned().collect();
         let rows: Vec<&str> = lines.collect();
-        assert!(rows.len() >= min_rows, "{name}: too few rows ({})", rows.len());
+        assert!(
+            rows.len() >= min_rows,
+            "{name}: too few rows ({})",
+            rows.len()
+        );
 
         for row in &rows {
             for (col, field) in row.split(',').enumerate() {
@@ -538,10 +554,7 @@ fn example_runs_and_writes_reproducible_csv() {
                         let value: f64 = field
                             .parse()
                             .unwrap_or_else(|_| panic!("{name}: non-numeric field '{field}'"));
-                        assert!(
-                            value.is_finite(),
-                            "{name}: non-finite field {field}"
-                        );
+                        assert!(value.is_finite(), "{name}: non-finite field {field}");
                     }
                     false => {
                         assert!(
