@@ -9,6 +9,7 @@
 
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +20,46 @@ import { loadFolder } from "../web/src/ingest.js";
 import { spanOf } from "../web/src/layout.js";
 
 const VIS = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const CHROME = "/usr/bin/google-chrome-stable";
+
+function resolveChromePath(explicitPath) {
+    if (explicitPath) {
+        if (!fsSync.existsSync(explicitPath)) {
+            throw new Error(`Chrome executable not found at specified path: ${explicitPath}`);
+        }
+        return explicitPath;
+    }
+
+    const envPath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+        process.env.CHROME_BIN ||
+        process.env.CHROME_PATH;
+    if (envPath) {
+        if (!fsSync.existsSync(envPath)) {
+            throw new Error(`Chrome executable not found at environment path: ${envPath}`);
+        }
+        return envPath;
+    }
+
+    const candidates = [
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/snap/bin/chromium",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ];
+
+    for (const candidate of candidates) {
+        try {
+            fsSync.accessSync(candidate, fsSync.constants.X_OK);
+            return candidate;
+        } catch {
+            // continue searching
+        }
+    }
+
+    return "/usr/bin/google-chrome-stable";
+}
 
 // same presets the old tool exposed: 480p15, 720p30, 1080p60, 4K60
 const QUALITY = {
@@ -39,6 +79,7 @@ function parseCommandLine() {
             "no-bloom": { type: "boolean", default: false },
             out: { type: "string", default: "output_vid" },
             "dry-run": { type: "boolean", default: false },
+            chrome: { type: "string" },
         },
     });
 
@@ -164,6 +205,8 @@ async function main() {
     await fs.mkdir(outDir, { recursive: true });
     const output = path.join(outDir, `${outName}.mp4`);
 
+    const chromePath = options["dry-run"] ? null : resolveChromePath(options.chrome);
+
     const server = createServer(0);
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port;
@@ -171,7 +214,7 @@ async function main() {
     let browser = null;
     try {
         browser = await puppeteer.launch({
-            executablePath: CHROME,
+            executablePath: chromePath,
             headless: true,
             args: [
                 "--no-sandbox",

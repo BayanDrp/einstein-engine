@@ -90,6 +90,7 @@ with `bin/render.mjs`:
 * `--no-bloom`: skip the glow pass
 * `--out NAME`: output video name; default `output_vid`
 * `--dry-run`: print the track inventory and render nothing
+* `--chrome PATH`: custom Chrome / Chromium path (or via `PUPPETEER_EXECUTABLE_PATH` / `CHROME_PATH`)
 
 Missing folders, empty folders, and failed renders exit with status 1 and a
 single line error instead of a traceback.
