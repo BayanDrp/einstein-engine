@@ -466,3 +466,11 @@ To render an MP4 simulation video via headless Chrome:
 ```bash
 node bin/render.mjs data/schwarzschild -q h --seconds 14 --out schwarzschild_orbit
 ```
+
+---
+
+## License
+
+Einstein Engine is available under the MIT License or the Apache License 2.0, at your option.
+
+The full texts are in `LICENSE-MIT` and `LICENSE-APACHE`.
