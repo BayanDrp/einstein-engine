@@ -124,7 +124,7 @@ export function createStage(canvas, options = {}) {
     // 5. Bodies
     const bodies = [];
 
-    // 5b. HUD: title, legend, time readout — plain DOM above the canvas.
+    // 5b. HUD: title, legend, time readout, plain DOM above the canvas.
     // Type and margins scale with render height so 4K stays readable.
     const unit = Math.max(10, Math.round(height / 60));
     const pad = Math.round(unit * 1.2);

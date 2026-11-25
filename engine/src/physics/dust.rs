@@ -1,5 +1,5 @@
 //! Pressureless dust: conserved density plus conserved momentum, with exact
-//! primitive recovery (no iteration — dust has no pressure).
+//! primitive recovery (no iteration: dust has no pressure).
 //!
 //! Evolved (conservative) variables, stored on [`DustState`]:
 //!   Dtilde = sqrt(det gamma) rho W            (conserved rest-mass density)
@@ -18,7 +18,7 @@
 //! and the 3+1 source construction.
 //!
 //! NOT implemented: pressure/EOS, magnetic fields, primitive recovery by
-//! iteration (unneeded — analytic here).
+//! iteration (unneeded: analytic here).
 //!
 //! Caustics: pressureless dust forms shell-crossing singularities where
 //! trajectories intersect; a single-valued velocity field cannot represent
