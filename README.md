@@ -6,6 +6,8 @@ A high performance numerical relativity engine written in Rust for simulating Ei
 
 The engine evolves dynamical spacetime geometry and relativistic matter without assuming background gravitational potentials. It implements both classic ADM and conformal BSSN formulations, coupled relativistic dust hydrodynamics, time dependent geodesic integration, and a WebGL visualization renderer.
 
+**Version 1.0 scope.** This release is a validated 3+1 core. The 1+D generalization remains a research branch. See [SCOPE.md](SCOPE.md) for the supported scope and the promotion criteria for future dimensions.
+
 ```
 Matter Stress Energy (T_μν)
          │
