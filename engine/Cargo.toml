@@ -7,6 +7,10 @@ edition = "2021"
 name = "einstein_engine"
 path = "src/lib.rs"
 
+[[example]]
+name = "validate"
+path = "examples/validate/main.rs"
+
 [[test]]
 name = "unit_grid"
 path = "../tests/grid/grid.rs"
