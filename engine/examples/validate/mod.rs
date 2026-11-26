@@ -1,6 +1,4 @@
 //! Validation scenarios for the 3+1 release gate.
-//!
-//! Implemented scenarios run first; V3 remains unwired.
 
 mod bssn_boundedness;
 mod csv_determinism;
@@ -17,54 +15,36 @@ use std::process::ExitCode;
 
 /// Run every validation scenario and return a process exit code.
 ///
-/// This deliberately fails until every scenario is implemented, so an
-/// unfinished suite can never be mistaken for a passing release gate.
+/// A failed scenario makes the release gate fail after every scenario has run.
 pub fn run() -> ExitCode {
-    match minkowski::run() {
-        Ok(()) => println!("V1 Minkowski: PASS"),
-        Err(error) => eprintln!("V1 Minkowski: FAIL: {error}"),
-    }
+    let mut all_passed = true;
+    all_passed &= report("V1 Minkowski", minkowski::run());
+    all_passed &= report("V2 Linear wave", linear_wave::run());
+    all_passed &= report("V3 Schwarzschild", schwarzschild::run());
+    all_passed &= report("V4 Geodesics", geodesics::run());
+    all_passed &= report("V5 FLRW dust", flrw_dust::run());
+    all_passed &= report("V6 Dust conservation", dust_conservation::run());
+    all_passed &= report("V7 BSSN boundedness", bssn_boundedness::run());
+    all_passed &= report("V8 Stage coupling", stage_coupling::run());
+    all_passed &= report("V9 CSV determinism", csv_determinism::run());
+    all_passed &= report("V10 WebGL renderer", webgl::run());
 
-    match linear_wave::run() {
-        Ok(()) => println!("V2 Linear wave: PASS"),
-        Err(error) => eprintln!("V2 Linear wave: FAIL: {error}"),
+    if all_passed {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
     }
+}
 
-    match geodesics::run() {
-        Ok(()) => println!("V4 Geodesics: PASS"),
-        Err(error) => eprintln!("V4 Geodesics: FAIL: {error}"),
+fn report(scenario: &str, outcome: Result<(), String>) -> bool {
+    match outcome {
+        Ok(()) => {
+            println!("{scenario}: PASS");
+            true
+        }
+        Err(error) => {
+            eprintln!("{scenario}: FAIL: {error}");
+            false
+        }
     }
-
-    match flrw_dust::run() {
-        Ok(()) => println!("V5 FLRW dust: PASS"),
-        Err(error) => eprintln!("V5 FLRW dust: FAIL: {error}"),
-    }
-
-    match dust_conservation::run() {
-        Ok(()) => println!("V6 Dust conservation: PASS"),
-        Err(error) => eprintln!("V6 Dust conservation: FAIL: {error}"),
-    }
-
-    match bssn_boundedness::run() {
-        Ok(()) => println!("V7 BSSN boundedness: PASS"),
-        Err(error) => eprintln!("V7 BSSN boundedness: FAIL: {error}"),
-    }
-
-    match stage_coupling::run() {
-        Ok(()) => println!("V8 Stage coupling: PASS"),
-        Err(error) => eprintln!("V8 Stage coupling: FAIL: {error}"),
-    }
-
-    match csv_determinism::run() {
-        Ok(()) => println!("V9 CSV determinism: PASS"),
-        Err(error) => eprintln!("V9 CSV determinism: FAIL: {error}"),
-    }
-
-    match webgl::run() {
-        Ok(()) => println!("V10 WebGL renderer: PASS"),
-        Err(error) => eprintln!("V10 WebGL renderer: FAIL: {error}"),
-    }
-
-    eprintln!("validation scenario V3 is not implemented yet");
-    ExitCode::FAILURE
 }

@@ -39,12 +39,13 @@ npm test
 
 The visualization CI job must provide headless Chromium with software WebGL enabled.
 
-The runner is expected to support two modes:
+The validation runner currently uses one full configuration:
 
-1. `--quick` runs reduced resolutions and step counts for pull requests. Target runtime is under 60 seconds.
-2. `--full` runs the release configuration. Target runtime is under 3 minutes.
+```sh
+cargo run --release --example validate
+```
 
-The runner exits with code 0 only when every scenario passes. A skipped scenario is a failure unless the skip is explicitly allowed by this document. The current scaffold exits with code 1 until the scenarios are implemented.
+The runner exits with code 0 only when every scenario passes. A skipped scenario is a failure unless the skip is explicitly allowed by this document. The release configuration target runtime is under 3 minutes.
 
 ## Scenario summary
 
@@ -254,7 +255,7 @@ The `coupled_dust` and `matter_response` examples write to the current directory
 
 ## Current implementation status
 
-The runner is located in `engine/examples/validate/`, with one module per scenario. V1 Minkowski, V2 Linear wave, V4 Geodesics, V5 FLRW dust, V6 Dust conservation, V7 BSSN boundedness, V8 Stage coupled particles, V9 CSV determinism, and V10 WebGL renderer are implemented and wired. V3 remains unwired. The entry point runs the implemented scenarios and still exits with code 1 by design, so an unfinished suite cannot be mistaken for a passing release gate.
+The runner is located in `engine/examples/validate/`, with one module per scenario. V1 through V10 are implemented and wired. The entry point runs every scenario and exits with code 1 if any scenario fails.
 
 ## Release checklist
 
@@ -263,7 +264,7 @@ Tag `v1.0.0` only when all of the following hold on the exact commit being tagge
 1. `cargo fmt --all -- --check` passes.
 2. `cargo clippy --workspace --all-targets -- -D warnings` passes.
 3. `cargo test --workspace` passes.
-4. `cargo run --release --example validate -- --full` passes all ten validation scenarios.
+4. `cargo run --release --example validate` passes all ten validation scenarios.
 5. `cd visualization && npm test` passes the visualization unit tests.
 6. `cargo doc --workspace --no-deps` passes with warnings denied.
 7. The working tree is clean and CI is green.
